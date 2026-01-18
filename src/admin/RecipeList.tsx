@@ -83,8 +83,14 @@ export function RecipeList() {
               <div class="text-sm font-semibold text-gray-900">{result.name}</div>
             </div>
 
-            {/* Delete button */}
-            <div class="ml-auto">
+            {/* Action buttons */}
+            <div class="ml-auto flex gap-2">
+              <a
+                href={`/admin/recipes/${recipe._id}`}
+                class="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors text-sm"
+              >
+                Edit
+              </a>
               <button
                 onClick={() => handleDelete(recipe._id, ingredient1.name, ingredient2.name, result.name)}
                 class="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors text-sm"

@@ -191,6 +191,31 @@ export const deleteRecipe = mutation({
   },
 });
 
+export const getRecipe = query({
+  args: {
+    recipeId: v.id("recipes"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.recipeId);
+  },
+});
+
+export const updateRecipe = mutation({
+  args: {
+    recipeId: v.id("recipes"),
+    ingredient1: v.id("elements"),
+    ingredient2: v.id("elements"),
+    result: v.id("elements"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.recipeId, {
+      ingredient1: args.ingredient1,
+      ingredient2: args.ingredient2,
+      result: args.result,
+    });
+  },
+});
+
 export const generateRecipe = action({
   args: {
     element1: v.id("elements"),

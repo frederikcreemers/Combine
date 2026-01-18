@@ -15,14 +15,16 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in another input/textarea
+      // Handle Escape anywhere - clear search and focus input
+      if (e.key === 'Escape') {
+        setSearchQuery('')
+        searchInputRef.current?.focus()
+        return
+      }
+
+      // Ignore letter keys if user is typing in another input/textarea
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        // Handle Escape in the search input
-        if (e.key === 'Escape' && target === searchInputRef.current) {
-          setSearchQuery('')
-          searchInputRef.current?.blur()
-        }
         return
       }
 
@@ -131,12 +133,6 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
           placeholder={`Search ${unlockedElements.length} elements...`}
           value={searchQuery}
           onInput={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              setSearchQuery('')
-              searchInputRef.current?.blur()
-            }
-          }}
           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
