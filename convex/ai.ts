@@ -26,8 +26,8 @@ ${recipeExamples || "None yet"}
 Given two elements to combine: "${ingredient1Name}" and "${ingredient2Name}"
 
 Determine what the result should be. You can:
-1. Reuse an existing element name if it makes sense (based on the examples above)
-2. Create a new element name if needed
+1. Reuse an existing element name if it makes sense - especially if that element currently has very few recipes leading to it
+2. Create a new element name if needed - optimize for results that are interesting to build upon further
 3. Respond with "NO RESULT" if these elements should not be combinable
 
 IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing else. No explanations, no markdown, just the name. Keep the name short (under ${MAX_ELEMENT_NAME_LENGTH} characters).`;
