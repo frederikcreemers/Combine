@@ -5,6 +5,7 @@ import { api } from '../../convex/_generated/api'
 import { Canvas, type CanvasElement } from './Canvas'
 import { ElementCollection } from './ElementCollection'
 import { NewElementDisplay } from './NewElementDisplay'
+import { Toolbar } from './Toolbar'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 
@@ -62,6 +63,10 @@ export function GamePage() {
       if (!element) return prev
       return [...prev.filter((el) => el.id !== id), element]
     })
+  }, [])
+
+  const handleClearCanvas = useCallback(() => {
+    setCanvasElements([])
   }, [])
 
   const handleCombine = useCallback(
@@ -127,6 +132,7 @@ export function GamePage() {
 
   return (
     <div class="h-screen flex">
+      <Toolbar onClearCanvas={handleClearCanvas} />
       <Canvas
         elements={canvasElements}
         onAddElement={handleAddElement}
