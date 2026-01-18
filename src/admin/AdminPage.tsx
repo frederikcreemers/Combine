@@ -2,9 +2,11 @@ import { ElementsList } from './ElementsList'
 
 export function AdminPage() {
   return (
-    <div>
-      <h1 class="text-2xl font-bold mb-4">Admin Page</h1>
-      <ElementsList />
+    <div class="min-h-screen bg-gray-50 py-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-3xl font-bold mb-6 text-gray-900">Admin Page</h1>
+        <ElementsList />
+      </div>
     </div>
   );
 }
