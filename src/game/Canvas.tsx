@@ -20,12 +20,20 @@ type CanvasProps = {
 const ELEMENT_WIDTH = 96
 const ELEMENT_HEIGHT = 140
 
+type CombiningState = {
+  x: number
+  y: number
+  showSwirl: boolean
+}
+
 export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onBringToFront, onCombine }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null)
   const [combiningElementId, setCombiningElementId] = useState<string | null>(null)
   const [shakingElementId, setShakingElementId] = useState<string | null>(null)
+  const [combiningState, setCombiningState] = useState<CombiningState | null>(null)
   const dragOffset = useRef({ x: 0, y: 0 })
+  const swirlTimeoutRef = useRef<number | null>(null)
 
   const findElementAtPosition = (x: number, y: number, excludeId?: string): CanvasElement | null => {
     for (const el of elements) {
@@ -54,6 +62,21 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
     setTimeout(() => setShakingElementId(null), 500)
   }
 
+  const startCombining = (x: number, y: number) => {
+    setCombiningState({ x, y, showSwirl: false })
+    swirlTimeoutRef.current = window.setTimeout(() => {
+      setCombiningState((prev) => prev ? { ...prev, showSwirl: true } : null)
+    }, 300)
+  }
+
+  const stopCombining = () => {
+    if (swirlTimeoutRef.current) {
+      clearTimeout(swirlTimeoutRef.current)
+      swirlTimeoutRef.current = null
+    }
+    setCombiningState(null)
+  }
+
   const handleDrop = async (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -72,12 +95,14 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       if (targetElement && draggedElement) {
         // Dropped on another element - combine them
         setCombiningElementId(canvasElementId)
+        startCombining(targetElement.x + ELEMENT_WIDTH / 2, targetElement.y + ELEMENT_HEIGHT / 2)
         const success = await onCombine(
           draggedElement.element._id,
           targetElement.element._id,
           draggedElement.id,
           targetElement.id
         )
+        stopCombining()
         setCombiningElementId(null)
         if (!success) {
           // Move the dragged element to the drop position and shake it
@@ -101,12 +126,14 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
 
         if (targetElement) {
           // Dropped on an existing element - combine them
+          startCombining(targetElement.x + ELEMENT_WIDTH / 2, targetElement.y + ELEMENT_HEIGHT / 2)
           const success = await onCombine(
             element._id,
             targetElement.element._id,
             null,
             targetElement.id
           )
+          stopCombining()
           if (!success) {
             triggerShake(targetElement.id)
           }
@@ -181,6 +208,17 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
         .shake {
           animation: shake 0.5s ease-in-out;
         }
+        @keyframes swirl {
+          0% { transform: translate(-50%, -50%) rotate(0deg); }
+          100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes swirl-fade-in {
+          0% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(0.5); }
+          100% { opacity: 1; transform: translate(-50%, -50%) rotate(180deg) scale(1); }
+        }
+        .magical-swirl {
+          animation: swirl-fade-in 0.3s ease-out forwards, swirl 1.5s linear 0.3s infinite;
+        }
       `}</style>
       {elements.map((canvasElement) => {
         const isDragging = canvasElement.id === draggingElementId
@@ -210,6 +248,28 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
           </div>
         )
       })}
+      {combiningState?.showSwirl && (
+        <div
+          class="magical-swirl absolute pointer-events-none z-50"
+          style={{
+            left: `${combiningState.x}px`,
+            top: `${combiningState.y}px`,
+          }}
+        >
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="swirl-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style={{ stopColor: '#fbbf24', stopOpacity: 1 }} />
+                <stop offset="50%" style={{ stopColor: '#f97316', stopOpacity: 1 }} />
+                <stop offset="100%" style={{ stopColor: '#ec4899', stopOpacity: 1 }} />
+              </linearGradient>
+            </defs>
+            <circle cx="60" cy="60" r="50" fill="none" stroke="url(#swirl-gradient)" stroke-width="4" stroke-dasharray="20 10" stroke-linecap="round" />
+            <circle cx="60" cy="60" r="35" fill="none" stroke="url(#swirl-gradient)" stroke-width="3" stroke-dasharray="15 8" stroke-linecap="round" opacity="0.7" />
+            <circle cx="60" cy="60" r="20" fill="none" stroke="url(#swirl-gradient)" stroke-width="2" stroke-dasharray="10 5" stroke-linecap="round" opacity="0.5" />
+          </svg>
+        </div>
+      )}
     </div>
   )
 }
