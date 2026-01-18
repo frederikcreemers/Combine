@@ -22,9 +22,16 @@ export const addElement = action({
     SVG: v.string(),
   },
   handler: async (ctx, args): Promise<{ id: string; name: string }> => {
+    // Capitalize each word in the name
+    const trimmedName = args.name.trim();
+    const capitalizedName = trimmedName
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+
     // Check if element with this name already exists
     const existing = await ctx.runQuery(internal.elements.findByName, {
-      name: args.name.trim(),
+      name: capitalizedName,
     });
 
     if (existing) {
@@ -36,16 +43,16 @@ export const addElement = action({
     // If SVG is empty, generate one using the AI action
     if (!svg || svg.trim() === "") {
       svg = await ctx.runAction(internal.ai.generateSVG, {
-        elementName: args.name,
+        elementName: capitalizedName,
       });
     }
 
     const elementId: string = await ctx.runMutation(internal.elements.insertElement, {
-      name: args.name.trim(),
+      name: capitalizedName,
       SVG: svg,
     });
 
-    return { id: elementId, name: args.name.trim() };
+    return { id: elementId, name: capitalizedName };
   },
 });
 
