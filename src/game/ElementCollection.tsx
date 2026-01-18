@@ -33,6 +33,30 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     
     e.dataTransfer.setData('application/element', JSON.stringify(element))
     e.dataTransfer.effectAllowed = 'copy'
+    
+    // Create custom drag image that matches canvas element appearance
+    const dragImage = document.createElement('div')
+    dragImage.style.cssText = 'position: absolute; top: -1000px; left: -1000px; width: 64px; height: 64px; display: flex; flex-direction: column; align-items: center;'
+    
+    const svgContainer = document.createElement('div')
+    svgContainer.style.cssText = 'width: 48px; height: 48px;'
+    svgContainer.innerHTML = element.SVG
+    
+    const nameLabel = document.createElement('span')
+    nameLabel.style.cssText = 'font-size: 12px; color: #374151; margin-top: 4px; white-space: nowrap;'
+    nameLabel.textContent = element.name
+    
+    dragImage.appendChild(svgContainer)
+    dragImage.appendChild(nameLabel)
+    document.body.appendChild(dragImage)
+    
+    e.dataTransfer.setDragImage(dragImage, 32, 32)
+    
+    // Clean up the drag image element after a short delay
+    requestAnimationFrame(() => {
+      document.body.removeChild(dragImage)
+    })
+    
     onDragStart?.(element)
   }
 
