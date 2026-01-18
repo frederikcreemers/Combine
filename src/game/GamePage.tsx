@@ -11,6 +11,7 @@ import { LoginModal } from './LoginModal'
 import { DiscoveredItemsModal } from './DiscoveredItemsModal'
 import { AboutModal } from './AboutModal'
 import { LoginRequiredModal } from './LoginRequiredModal'
+import { RateLimitModal } from './RateLimitModal'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 
@@ -35,6 +36,7 @@ export function GamePage() {
   const [isDiscoveriesModalOpen, setIsDiscoveriesModalOpen] = useState(false)
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
   const [isLoginRequiredModalOpen, setIsLoginRequiredModalOpen] = useState(false)
+  const [isRateLimitModalOpen, setIsRateLimitModalOpen] = useState(false)
 
   useRunAfterSignIn(() => {
     unlockInitialElements()
@@ -89,6 +91,11 @@ export function GamePage() {
 
         if (result && 'requiresLogin' in result && result.requiresLogin) {
           setIsLoginRequiredModalOpen(true)
+          return false
+        }
+
+        if (result && 'rateLimitExceeded' in result && result.rateLimitExceeded) {
+          setIsRateLimitModalOpen(true)
           return false
         }
 
@@ -201,6 +208,10 @@ export function GamePage() {
           setIsLoginRequiredModalOpen(false)
           setIsLoginModalOpen(true)
         }}
+      />
+      <RateLimitModal
+        isOpen={isRateLimitModalOpen}
+        onClose={() => setIsRateLimitModalOpen(false)}
       />
     </div>
   )

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
+import { rateLimiter } from "./rateLimits";
 import type { Id } from "./_generated/dataModel";
 
 export const listDiscoveredElements = query({
@@ -297,8 +298,9 @@ export const discover = internalAction({
 });
 
 type CombineResult = 
-  | { element: { _id: string; name: string; SVG: string }; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean; requiresLogin?: false }
+  | { element: { _id: string; name: string; SVG: string }; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean; requiresLogin?: false; rateLimitExceeded?: false }
   | { requiresLogin: true }
+  | { rateLimitExceeded: true }
   | null;
 
 export const isUserAnonymous = internalQuery({
@@ -355,6 +357,15 @@ export const combine = action({
 
     if (isAnonymous) {
       return { requiresLogin: true };
+    }
+
+    // Check rate limit before generating new recipe
+    const rateLimitStatus = await rateLimiter.limit(ctx, "newElements", {
+      key: userId,
+    });
+
+    if (!rateLimitStatus.ok) {
+      return { rateLimitExceeded: true };
     }
 
     // Try to discover one
