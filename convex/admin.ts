@@ -1,7 +1,45 @@
-import { action, mutation, query } from "./_generated/server";
+import { action, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
+import { getAuthUserId } from "@convex-dev/auth/server";
+
+// Helper to check if user is admin (for use in queries/mutations)
+async function assertAdmin(ctx: { db: any; auth: any }) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) {
+    throw new Error("Not authenticated");
+  }
+  const adminEntry = await ctx.db
+    .query("adminUsers")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .first();
+  if (!adminEntry) {
+    throw new Error("Not authorized");
+  }
+}
+
+// Internal query for actions to check admin status
+export const checkIsAdmin = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return false;
+    const adminEntry = await ctx.db
+      .query("adminUsers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    return !!adminEntry;
+  },
+});
+
+// Helper for actions to assert admin
+async function assertAdminAction(ctx: { runQuery: any }) {
+  const isAdmin = await ctx.runQuery(internal.admin.checkIsAdmin);
+  if (!isAdmin) {
+    throw new Error("Not authorized");
+  }
+}
 
 // ============== ELEMENT FUNCTIONS ==============
 
@@ -11,6 +49,7 @@ export const addElement = action({
     SVG: v.string(),
   },
   handler: async (ctx, args): Promise<{ id: string; name: string }> => {
+    await assertAdminAction(ctx);
     // Capitalize each word in the name
     const trimmedName = args.name.trim();
     const capitalizedName = trimmedName
@@ -50,6 +89,7 @@ export const getElement = query({
     elementId: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     return await ctx.db.get(args.elementId);
   },
 });
@@ -61,6 +101,7 @@ export const updateElement = mutation({
     SVG: v.string(),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     // Capitalize each word in the name
     const trimmedName = args.name.trim();
     const capitalizedName = trimmedName
@@ -81,6 +122,7 @@ export const regenerateSVG = action({
     feedback: v.string(),
   },
   handler: async (ctx, args): Promise<string> => {
+    await assertAdminAction(ctx);
     // Get the element
     const element = await ctx.runQuery(internal.elements.getElement, {
       elementId: args.elementId,
@@ -112,6 +154,7 @@ export const deleteElement = mutation({
     elementId: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     // Delete all recipes that reference this element
     const recipesAsIngredient1 = await ctx.db
       .query("recipes")
@@ -150,6 +193,7 @@ export const findCombination = query({
     element2: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     const recipes = await ctx.db
       .query("recipes")
       .filter((q) =>
@@ -173,6 +217,7 @@ export const findCombination = query({
 export const listRecipes = query({
   args: {},
   handler: async (ctx) => {
+    await assertAdmin(ctx);
     return await ctx.db
       .query("recipes")
       .order("desc")
@@ -185,6 +230,7 @@ export const getRecipesForElement = query({
     elementId: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     return await ctx.db
       .query("recipes")
       .filter((q) => q.eq(q.field("result"), args.elementId))
@@ -197,6 +243,7 @@ export const getRecipesUsingElement = query({
     elementId: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     const asIngredient1 = await ctx.db
       .query("recipes")
       .filter((q) => q.eq(q.field("ingredient1"), args.elementId))
@@ -216,6 +263,7 @@ export const addRecipe = mutation({
     result: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     // Check if a recipe with the same ingredients (in any order) and result already exists
     const existingRecipe1 = await ctx.db
       .query("recipes")
@@ -257,6 +305,7 @@ export const deleteRecipe = mutation({
     recipeId: v.id("recipes"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     await ctx.db.delete(args.recipeId);
   },
 });
@@ -266,6 +315,7 @@ export const getRecipe = query({
     recipeId: v.id("recipes"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     return await ctx.db.get(args.recipeId);
   },
 });
@@ -278,6 +328,7 @@ export const updateRecipe = mutation({
     result: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    await assertAdmin(ctx);
     await ctx.db.patch(args.recipeId, {
       ingredient1: args.ingredient1,
       ingredient2: args.ingredient2,
@@ -292,6 +343,7 @@ export const generateRecipe = action({
     element2: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    await assertAdminAction(ctx);
     const element1 = await ctx.runQuery(internal.elements.getElementPublic, {
       elementId: args.element1,
     });
