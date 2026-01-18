@@ -73,9 +73,10 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
   }
 
   const handleElementDragEnd = (e: DragEvent, canvasElement: CanvasElement) => {
-    setDraggingElementId(null)
-    
-    if (!canvasRef.current) return
+    if (!canvasRef.current) {
+      setDraggingElementId(null)
+      return
+    }
 
     const rect = canvasRef.current.getBoundingClientRect()
     const isOutsideCanvas = 
@@ -85,7 +86,11 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       e.clientY > rect.bottom
 
     if (isOutsideCanvas) {
+      // Remove element - don't reset draggingElementId since element will be gone
       onRemoveElement(canvasElement.id)
+    } else {
+      // Element stays on canvas - make it visible again
+      setDraggingElementId(null)
     }
   }
 
