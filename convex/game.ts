@@ -5,6 +5,27 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
 import type { Id } from "./_generated/dataModel";
 
+export const listDiscoveredElements = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      return [];
+    }
+
+    const elements = await ctx.db
+      .query("elements")
+      .withIndex("by_discoveredBy", (q) => q.eq("discoveredBy", userId))
+      .collect();
+
+    return elements.map((el) => ({
+      _id: el._id,
+      name: el.name,
+      SVG: el.SVG,
+    }));
+  },
+});
+
 export const listUnlockedElements = query({
   args: {},
   handler: async (ctx) => {

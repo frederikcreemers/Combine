@@ -1,9 +1,10 @@
 type ToolbarProps = {
   onClearCanvas: () => void
   onAccountClick: () => void
+  onDiscoveriesClick: () => void
 }
 
-export function Toolbar({ onClearCanvas, onAccountClick }: ToolbarProps) {
+export function Toolbar({ onClearCanvas, onAccountClick, onDiscoveriesClick }: ToolbarProps) {
   return (
     <div class="w-12 bg-red-950 flex flex-col items-center py-2 gap-2">
       <button
@@ -29,6 +30,31 @@ export function Toolbar({ onClearCanvas, onAccountClick }: ToolbarProps) {
         {/* Tooltip */}
         <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
           Clear canvas
+        </span>
+      </button>
+
+      <button
+        onClick={onDiscoveriesClick}
+        class="w-10 h-10 flex items-center justify-center rounded-lg bg-red-900 hover:bg-red-800 transition-colors group relative"
+        title="Your Discoveries"
+      >
+        {/* Lightbulb icon */}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="w-6 h-6 text-red-200"
+        >
+          <path d="M9 18h6" />
+          <path d="M10 22h4" />
+          <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+        </svg>
+        {/* Tooltip */}
+        <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+          Your Discoveries
         </span>
       </button>
 

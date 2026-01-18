@@ -8,6 +8,7 @@ import { NewElementDisplay } from './NewElementDisplay'
 import { Toolbar } from './Toolbar'
 import { AccountModal } from './AccountModal'
 import { LoginModal } from './LoginModal'
+import { DiscoveredItemsModal } from './DiscoveredItemsModal'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 
@@ -29,6 +30,7 @@ export function GamePage() {
   const [newElementToShow, setNewElementToShow] = useState<NewElement | null>(null)
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [isDiscoveriesModalOpen, setIsDiscoveriesModalOpen] = useState(false)
 
   useRunAfterSignIn(() => {
     unlockInitialElements()
@@ -139,6 +141,7 @@ export function GamePage() {
       <Toolbar
         onClearCanvas={handleClearCanvas}
         onAccountClick={() => setIsAccountModalOpen(true)}
+        onDiscoveriesClick={() => setIsDiscoveriesModalOpen(true)}
       />
       <Canvas
         elements={canvasElements}
@@ -172,6 +175,10 @@ export function GamePage() {
           setIsLoginModalOpen(false)
           setIsAccountModalOpen(true)
         }}
+      />
+      <DiscoveredItemsModal
+        isOpen={isDiscoveriesModalOpen}
+        onClose={() => setIsDiscoveriesModalOpen(false)}
       />
     </div>
   )
