@@ -9,8 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
     "convex": "^1.31.5",
-    "preact": "^10.27.2"
+    "preact": "^10.27.2",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.2",
