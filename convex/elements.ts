@@ -6,11 +6,13 @@ export const insertElement = internalMutation({
   args: {
     name: v.string(),
     SVG: v.string(),
+    discoveredBy: v.optional(v.id("users")),
   },
   handler: async (ctx, args): Promise<string> => {
     const elementId = await ctx.db.insert("elements", {
       name: args.name,
       SVG: args.SVG,
+      discoveredBy: args.discoveredBy,
     });
     return elementId;
   },

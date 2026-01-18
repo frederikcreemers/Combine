@@ -1,6 +1,15 @@
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 
+// Shared helper to capitalize element names
+export function capitalizeElementName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 export async function generateRecipe(
   ingredient1Name: string,
   ingredient2Name: string,

@@ -1,7 +1,9 @@
-import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
+import type { Id } from "./_generated/dataModel";
 
 export const listUnlockedElements = query({
   args: {},
@@ -134,12 +136,88 @@ export const unlockElement = internalMutation({
   },
 });
 
+export const discover = internalAction({
+  args: {
+    element1: v.id("elements"),
+    element2: v.id("elements"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string } } | null> => {
+    const element1 = await ctx.runQuery(internal.elements.getElementPublic, {
+      elementId: args.element1,
+    });
+    const element2 = await ctx.runQuery(internal.elements.getElementPublic, {
+      elementId: args.element2,
+    });
+
+    if (!element1 || !element2) {
+      throw new Error("One or both elements not found");
+    }
+
+    const recipeExamplesText = await ctx.runQuery(internal.recipes.getRecipeExamplesText);
+    const result = await generateRecipeAI(element1.name, element2.name, recipeExamplesText);
+
+    let resultName = result.trim();
+
+    if (resultName.toUpperCase() === "NO RESULT") {
+      return null;
+    }
+
+    resultName = capitalizeElementName(resultName);
+
+    // Check if element exists
+    const existingElement = await ctx.runQuery(internal.elements.getElementByName, {
+      name: resultName,
+    });
+
+    let resultElementId: Id<"elements">;
+    let resultSVG: string;
+
+    if (existingElement) {
+      resultElementId = existingElement._id;
+      resultSVG = existingElement.SVG;
+    } else {
+      // Create new element with discoveredBy set to current user
+      const svg = await ctx.runAction(internal.ai.generateSVG, {
+        elementName: resultName,
+      });
+      resultElementId = await ctx.runMutation(internal.elements.insertElement, {
+        name: resultName,
+        SVG: svg,
+        discoveredBy: args.userId,
+      }) as Id<"elements">;
+      resultSVG = svg;
+    }
+
+    // Create the recipe
+    await ctx.runMutation(internal.recipes.insertRecipe, {
+      ingredient1: args.element1,
+      ingredient2: args.element2,
+      result: resultElementId,
+    });
+
+    // Unlock the element for the user
+    await ctx.runMutation(internal.game.unlockElement, {
+      elementId: resultElementId,
+      userId: args.userId,
+    });
+
+    return {
+      element: {
+        _id: resultElementId,
+        name: resultName,
+        SVG: resultSVG,
+      },
+    };
+  },
+});
+
 export const combine = action({
   args: {
     element1: v.id("elements"),
     element2: v.id("elements"),
   },
-  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string }; new: boolean } | null> => {
+  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string }; new: boolean; discovered: boolean } | null> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("User is not authenticated");
@@ -151,22 +229,39 @@ export const combine = action({
       userId,
     });
 
-    if (!result) {
+    if (result) {
+      // Recipe exists
+      const isNew = !result.alreadyUnlocked;
+
+      if (isNew) {
+        await ctx.runMutation(internal.game.unlockElement, {
+          elementId: result.element._id,
+          userId,
+        });
+      }
+
+      return {
+        element: result.element,
+        new: isNew,
+        discovered: false,
+      };
+    }
+
+    // No recipe exists - try to discover one
+    const discoverResult = await ctx.runAction(internal.game.discover, {
+      element1: args.element1,
+      element2: args.element2,
+      userId,
+    });
+
+    if (!discoverResult) {
       return null;
     }
 
-    const isNew = !result.alreadyUnlocked;
-
-    if (isNew) {
-      await ctx.runMutation(internal.game.unlockElement, {
-        elementId: result.element._id,
-        userId,
-      });
-    }
-
     return {
-      element: result.element,
-      new: isNew,
+      element: discoverResult.element,
+      new: true,
+      discovered: true,
     };
   },
 });

@@ -1,8 +1,7 @@
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { generateRecipe as generateRecipeAI } from "./ai";
-import type { Doc } from "./_generated/dataModel";
+import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
 
 export const findCombination = query({
   args: {
@@ -44,6 +43,27 @@ export const listRecipesForGeneration = internalQuery({
   args: {},
   handler: async (ctx) => {
     return await ctx.db.query("recipes").collect();
+  },
+});
+
+export const getRecipeExamplesText = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<string> => {
+    const allRecipes = await ctx.db.query("recipes").collect();
+    
+    const examples = await Promise.all(
+      allRecipes.map(async (recipe) => {
+        const ing1 = await ctx.db.get(recipe.ingredient1);
+        const ing2 = await ctx.db.get(recipe.ingredient2);
+        const res = await ctx.db.get(recipe.result);
+        if (ing1 && ing2 && res) {
+          return `${ing1.name} + ${ing2.name} = ${res.name}`;
+        }
+        return null;
+      })
+    );
+    
+    return examples.filter((r): r is string => r !== null).join("\n");
   },
 });
 
@@ -177,8 +197,6 @@ export const generateRecipe = action({
     element2: v.id("elements"),
   },
   handler: async (ctx, args) => {
-    // Get all recipes for context
-    const allRecipes = await ctx.runQuery(internal.recipes.listRecipesForGeneration);
     const element1 = await ctx.runQuery(internal.elements.getElementPublic, {
       elementId: args.element1,
     });
@@ -190,26 +208,7 @@ export const generateRecipe = action({
       throw new Error("One or both elements not found");
     }
 
-    // Build examples from existing recipes
-    const recipeExamples = await Promise.all(
-      allRecipes.map(async (recipe: Doc<"recipes">) => {
-        const ing1 = await ctx.runQuery(internal.elements.getElementPublic, {
-          elementId: recipe.ingredient1,
-        });
-        const ing2 = await ctx.runQuery(internal.elements.getElementPublic, {
-          elementId: recipe.ingredient2,
-        });
-        const res = await ctx.runQuery(internal.elements.getElementPublic, {
-          elementId: recipe.result,
-        });
-        if (ing1 && ing2 && res) {
-          return `${ing1.name} + ${ing2.name} = ${res.name}`;
-        }
-        return null;
-      })
-    );
-    const recipeExamplesText = recipeExamples.filter((r): r is string => r !== null).join("\n");
-
+    const recipeExamplesText = await ctx.runQuery(internal.recipes.getRecipeExamplesText);
     const result = await generateRecipeAI(element1.name, element2.name, recipeExamplesText);
 
     let resultName = result.trim();
@@ -218,11 +217,7 @@ export const generateRecipe = action({
       return null;
     }
 
-    // Capitalize each word in the name
-    resultName = resultName
-      .split(/\s+/)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
+    resultName = capitalizeElementName(resultName);
 
     // Check if element exists
     const existingElement = await ctx.runQuery(internal.elements.getElementByName, {
@@ -234,7 +229,7 @@ export const generateRecipe = action({
     if (existingElement) {
       resultElementId = existingElement._id;
     } else {
-      // Create new element
+      // Create new element (no discoveredBy for admin-generated recipes)
       const svg = await ctx.runAction(internal.ai.generateSVG, {
         elementName: resultName,
       });
