@@ -115,7 +115,7 @@ export const generateSVG = internalAction({
     elementName: v.string(),
   },
   handler: async (ctx, args) => {
-    const prompt = `Generate an SVG illustration of "${args.elementName}" in a simple illustration style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
+    const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
     const content = await callOpenRouter(prompt);
     return extractSVG(content);
@@ -135,7 +135,7 @@ ${args.oldSVG}
 
 User feedback: ${args.feedback}
 
-Please generate an improved version of this SVG based on the feedback. Keep it in a simple illustration style on a transparent background, and ensure it fits nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
+Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
     const content = await callOpenRouter(prompt);
     return extractSVG(content);
