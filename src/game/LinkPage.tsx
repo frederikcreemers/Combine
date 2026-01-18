@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks'
-import { useMutation } from 'convex/react'
+import { useConvexAuth, useMutation } from 'convex/react'
 import { useLocation } from 'preact-iso/router'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -9,11 +9,14 @@ interface LinkPageProps {
 }
 
 export function LinkPage({ id }: LinkPageProps) {
+  const { isAuthenticated, isLoading } = useConvexAuth()
   const linkAccount = useMutation(api.users.linkAccount)
   const location = useLocation()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (isLoading || !isAuthenticated) return
+
     const doLink = async () => {
       try {
         await linkAccount({ anonymousUserId: id as Id<'users'> })
@@ -24,7 +27,7 @@ export function LinkPage({ id }: LinkPageProps) {
       }
     }
     doLink()
-  }, [id, linkAccount, location])
+  }, [id, linkAccount, location, isLoading, isAuthenticated])
 
   if (error) {
     return (
