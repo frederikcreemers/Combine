@@ -36,21 +36,21 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     
     // Create custom drag image that matches canvas element card appearance
     const dragImage = document.createElement('div')
-    dragImage.style.cssText = 'position: absolute; top: -1000px; left: -1000px; width: 64px; height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; border: 1px solid #9ca3af; border-radius: 6px; padding: 4px;'
+    dragImage.style.cssText = 'position: absolute; top: -1000px; left: -1000px; width: 96px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; border: 1px solid #9ca3af; border-radius: 6px; padding: 8px;'
     
     const svgContainer = document.createElement('div')
-    svgContainer.style.cssText = 'width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;'
+    svgContainer.style.cssText = 'width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;'
     svgContainer.innerHTML = element.SVG
     
     const nameLabel = document.createElement('span')
-    nameLabel.style.cssText = 'font-size: 12px; color: #374151; margin-top: 4px; white-space: nowrap;'
+    nameLabel.style.cssText = 'font-size: 14px; color: #374151; margin-top: 4px; text-align: center; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;'
     nameLabel.textContent = element.name
     
     dragImage.appendChild(svgContainer)
     dragImage.appendChild(nameLabel)
     document.body.appendChild(dragImage)
     
-    e.dataTransfer.setDragImage(dragImage, 32, 40)
+    e.dataTransfer.setDragImage(dragImage, 48, 70)
     
     // Clean up the drag image element after a short delay
     requestAnimationFrame(() => {

@@ -17,8 +17,8 @@ type CanvasProps = {
   onCombine: (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null) => Promise<boolean>
 }
 
-const ELEMENT_WIDTH = 64
-const ELEMENT_HEIGHT = 80
+const ELEMENT_WIDTH = 96
+const ELEMENT_HEIGHT = 140
 
 export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onBringToFront, onCombine }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -190,7 +190,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
         return (
           <div
             key={canvasElement.id}
-            class={`absolute w-16 h-20 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none bg-white border border-gray-400 rounded-md p-1 ${isShaking ? 'shake' : ''}`}
+            class={`absolute w-24 h-[140px] flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none bg-white border border-gray-400 rounded-md p-2 ${isShaking ? 'shake' : ''}`}
             style={{
               left: `${canvasElement.x}px`,
               top: `${canvasElement.y}px`,
@@ -201,10 +201,10 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
             onDragEnd={(e) => handleElementDragEnd(e, canvasElement)}
           >
             <div
-              class="w-10 h-10 pointer-events-none flex items-center justify-center"
+              class="w-[60px] h-[60px] pointer-events-none flex items-center justify-center flex-shrink-0"
               dangerouslySetInnerHTML={{ __html: canvasElement.element.SVG }}
             />
-            <span class="text-xs text-gray-700 mt-1 whitespace-nowrap pointer-events-none">
+            <span class="text-sm text-gray-700 mt-1 text-center leading-tight line-clamp-2 pointer-events-none">
               {canvasElement.element.name}
             </span>
           </div>
