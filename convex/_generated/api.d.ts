@@ -9,7 +9,9 @@
  */
 
 import type * as ai from "../ai.js";
+import type * as auth from "../auth.js";
 import type * as elements from "../elements.js";
+import type * as http from "../http.js";
 import type * as recipes from "../recipes.js";
 
 import type {
@@ -20,7 +22,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
+  auth: typeof auth;
   elements: typeof elements;
+  http: typeof http;
   recipes: typeof recipes;
 }>;
 

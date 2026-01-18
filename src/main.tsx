@@ -1,13 +1,14 @@
 import { render } from 'preact'
-import { ConvexProvider, ConvexReactClient } from 'convex/react'
+import { ConvexAuthProvider } from '@convex-dev/auth/react'
+import { ConvexReactClient } from 'convex/react'
 import './index.css'
 import { App } from './app.tsx'
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL)
 
 render(
-  <ConvexProvider client={convex}>
+  <ConvexAuthProvider client={convex}>
     <App />
-  </ConvexProvider>,
+  </ConvexAuthProvider>,
   document.getElementById('app')!
 )
