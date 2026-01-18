@@ -1,4 +1,4 @@
-import type { Doc } from '../../convex/_generated/dataModel'
+import type { Doc, Id } from '../../convex/_generated/dataModel'
 import { useRef, useState } from 'preact/hooks'
 
 export type CanvasElement = {
@@ -13,12 +13,30 @@ type CanvasProps = {
   onAddElement: (element: Doc<'elements'>, x: number, y: number) => void
   onMoveElement: (id: string, x: number, y: number) => void
   onRemoveElement: (id: string) => void
+  onCombine: (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string, canvasId2: string | null) => void
 }
 
-export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement }: CanvasProps) {
+const ELEMENT_SIZE = 64
+
+export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onCombine }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null)
   const dragOffset = useRef({ x: 0, y: 0 })
+
+  const findElementAtPosition = (x: number, y: number, excludeId?: string): CanvasElement | null => {
+    for (const el of elements) {
+      if (excludeId && el.id === excludeId) continue
+      if (
+        x >= el.x &&
+        x <= el.x + ELEMENT_SIZE &&
+        y >= el.y &&
+        y <= el.y + ELEMENT_SIZE
+      ) {
+        return el
+      }
+    }
+    return null
+  }
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault()
@@ -33,21 +51,50 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
     if (!canvasRef.current || !e.dataTransfer) return
 
     const rect = canvasRef.current.getBoundingClientRect()
+    const dropX = e.clientX - rect.left
+    const dropY = e.clientY - rect.top
 
     const canvasElementId = e.dataTransfer.getData('application/canvas-element-id')
     if (canvasElementId) {
       // Moving existing element on canvas
-      const x = e.clientX - rect.left - dragOffset.current.x
-      const y = e.clientY - rect.top - dragOffset.current.y
-      onMoveElement(canvasElementId, x, y)
+      const draggedElement = elements.find((el) => el.id === canvasElementId)
+      const targetElement = findElementAtPosition(dropX, dropY, canvasElementId)
+
+      if (targetElement && draggedElement) {
+        // Dropped on another element - combine them
+        onCombine(
+          draggedElement.element._id,
+          targetElement.element._id,
+          draggedElement.id,
+          targetElement.id
+        )
+      } else {
+        // Just moving the element
+        const x = dropX - dragOffset.current.x
+        const y = dropY - dragOffset.current.y
+        onMoveElement(canvasElementId, x, y)
+      }
     } else {
-      // Adding new element from collection - center the element on cursor
+      // Adding new element from collection
       const elementData = e.dataTransfer.getData('application/element')
       if (elementData) {
         const element = JSON.parse(elementData) as Doc<'elements'>
-        const x = e.clientX - rect.left - 32 // Center the 64px element
-        const y = e.clientY - rect.top - 32
-        onAddElement(element, x, y)
+        const targetElement = findElementAtPosition(dropX, dropY)
+
+        if (targetElement) {
+          // Dropped on an existing element - combine them
+          onCombine(
+            element._id,
+            targetElement.element._id,
+            null as any, // No canvas ID for element from collection
+            targetElement.id
+          )
+        } else {
+          // Just adding to canvas
+          const x = dropX - 32 // Center the 64px element
+          const y = dropY - 32
+          onAddElement(element, x, y)
+        }
       }
     }
   }

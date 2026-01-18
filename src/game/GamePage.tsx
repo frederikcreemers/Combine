@@ -1,11 +1,11 @@
-import { useConvexAuth, useMutation } from 'convex/react'
+import { useConvexAuth, useAction, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useEffect, useState, useCallback } from 'preact/hooks'
 import { api } from '../../convex/_generated/api'
 import { Canvas, type CanvasElement } from './Canvas'
 import { ElementCollection } from './ElementCollection'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
-import type { Doc } from '../../convex/_generated/dataModel'
+import type { Doc, Id } from '../../convex/_generated/dataModel'
 
 let nextCanvasElementId = 0
 
@@ -13,6 +13,7 @@ export function GamePage() {
   const { isAuthenticated, isLoading } = useConvexAuth()
   const { signIn, signOut } = useAuthActions()
   const unlockInitialElements = useMutation(api.game.unlockInitialElements)
+  const combineAction = useAction(api.game.combine)
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([])
 
   useRunAfterSignIn(() => {
@@ -46,6 +47,39 @@ export function GamePage() {
     setCanvasElements((prev) => prev.filter((el) => el.id !== id))
   }, [])
 
+  const handleCombine = useCallback(
+    async (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null) => {
+      try {
+        const result = await combineAction({
+          element1: element1Id,
+          element2: element2Id,
+        })
+
+        if (result) {
+          // Get position of the target element (the one being dropped onto)
+          const targetElement = canvasElements.find((el) => el.id === canvasId2)
+          const position = targetElement ? { x: targetElement.x, y: targetElement.y } : { x: 100, y: 100 }
+
+          // Remove both elements and add the result
+          setCanvasElements((prev) => {
+            const filtered = prev.filter((el) => el.id !== canvasId1 && el.id !== canvasId2)
+            const newElement: CanvasElement = {
+              id: `canvas-element-${nextCanvasElementId++}`,
+              x: position.x,
+              y: position.y,
+              element: result.element as Doc<'elements'>,
+            }
+            return [...filtered, newElement]
+          })
+        }
+        // If result is null, no valid recipe - leave elements on canvas
+      } catch (error) {
+        console.error('Failed to combine elements:', error)
+      }
+    },
+    [combineAction, canvasElements]
+  )
+
   if (isLoading || !isAuthenticated) {
     return (
       <div class="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -67,6 +101,7 @@ export function GamePage() {
         onAddElement={handleAddElement}
         onMoveElement={handleMoveElement}
         onRemoveElement={handleRemoveElement}
+        onCombine={handleCombine}
       />
       <ElementCollection />
     </div>
