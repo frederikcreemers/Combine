@@ -117,7 +117,7 @@ export const generateSVG = internalAction({
   args: {
     elementName: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
     const content = await callOpenRouter(prompt, MODEL_SVG);
@@ -131,7 +131,7 @@ export const regenerateSVG = internalAction({
     oldSVG: v.string(),
     feedback: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     const prompt = `You are updating an SVG illustration of "${args.elementName}". Here is the current SVG:
 
 ${args.oldSVG}
