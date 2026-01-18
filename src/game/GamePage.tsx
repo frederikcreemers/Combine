@@ -7,6 +7,7 @@ import { ElementCollection } from './ElementCollection'
 import { NewElementDisplay } from './NewElementDisplay'
 import { Toolbar } from './Toolbar'
 import { AccountModal } from './AccountModal'
+import { LoginModal } from './LoginModal'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 
@@ -27,6 +28,7 @@ export function GamePage() {
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([])
   const [newElementToShow, setNewElementToShow] = useState<NewElement | null>(null)
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
 
   useRunAfterSignIn(() => {
     unlockInitialElements()
@@ -158,6 +160,18 @@ export function GamePage() {
       <AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
+        onLoginClick={() => {
+          setIsAccountModalOpen(false)
+          setIsLoginModalOpen(true)
+        }}
+      />
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onBack={() => {
+          setIsLoginModalOpen(false)
+          setIsAccountModalOpen(true)
+        }}
       />
     </div>
   )

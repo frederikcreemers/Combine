@@ -5,9 +5,10 @@ import { api } from '../../convex/_generated/api'
 type AccountModalProps = {
   isOpen: boolean
   onClose: () => void
+  onLoginClick: () => void
 }
 
-export function AccountModal({ isOpen, onClose }: AccountModalProps) {
+export function AccountModal({ isOpen, onClose, onLoginClick }: AccountModalProps) {
   const clearProgress = useMutation(api.game.clearProgress)
   const [isClearing, setIsClearing] = useState(false)
 
@@ -52,17 +53,33 @@ export function AccountModal({ isOpen, onClose }: AccountModalProps) {
             </svg>
           </button>
         </div>
-        <div class="p-4">
-          <button
-            onClick={handleClearProgress}
-            disabled={isClearing}
-            class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isClearing ? 'Clearing...' : 'Clear Progress'}
-          </button>
-          <p class="text-sm text-gray-500 mt-2">
-            Reset your progress and start over with only the basic elements.
-          </p>
+        <div class="p-4 space-y-4">
+          <div>
+            <button
+              onClick={onLoginClick}
+              class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            >
+              Sign in with Email
+            </button>
+            <p class="text-sm text-gray-500 mt-2">
+              Sign in to save your progress across devices.
+            </p>
+          </div>
+
+          <hr class="border-gray-200" />
+
+          <div>
+            <button
+              onClick={handleClearProgress}
+              disabled={isClearing}
+              class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isClearing ? 'Clearing...' : 'Clear Progress'}
+            </button>
+            <p class="text-sm text-gray-500 mt-2">
+              Reset your progress and start over with only the basic elements.
+            </p>
+          </div>
         </div>
       </div>
     </div>
