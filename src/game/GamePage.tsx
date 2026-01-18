@@ -1,15 +1,19 @@
 import { useConvexAuth, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
-import { useEffect } from 'preact/hooks'
+import { useEffect, useState, useCallback } from 'preact/hooks'
 import { api } from '../../convex/_generated/api'
-import { Canvas } from './Canvas'
+import { Canvas, type CanvasElement } from './Canvas'
 import { ElementCollection } from './ElementCollection'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
+import type { Doc } from '../../convex/_generated/dataModel'
+
+let nextCanvasElementId = 0
 
 export function GamePage() {
   const { isAuthenticated, isLoading } = useConvexAuth()
   const { signIn, signOut } = useAuthActions()
   const unlockInitialElements = useMutation(api.game.unlockInitialElements)
+  const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([])
 
   useRunAfterSignIn(() => {
     unlockInitialElements()
@@ -21,6 +25,26 @@ export function GamePage() {
       signIn('anonymous')
     }
   }, [isLoading, isAuthenticated, signIn, signOut])
+
+  const handleAddElement = useCallback((element: Doc<'elements'>, x: number, y: number) => {
+    const newCanvasElement: CanvasElement = {
+      id: `canvas-element-${nextCanvasElementId++}`,
+      x,
+      y,
+      element,
+    }
+    setCanvasElements((prev) => [...prev, newCanvasElement])
+  }, [])
+
+  const handleMoveElement = useCallback((id: string, x: number, y: number) => {
+    setCanvasElements((prev) =>
+      prev.map((el) => (el.id === id ? { ...el, x, y } : el))
+    )
+  }, [])
+
+  const handleRemoveElement = useCallback((id: string) => {
+    setCanvasElements((prev) => prev.filter((el) => el.id !== id))
+  }, [])
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -38,7 +62,12 @@ export function GamePage() {
 
   return (
     <div class="h-screen flex">
-      <Canvas />
+      <Canvas
+        elements={canvasElements}
+        onAddElement={handleAddElement}
+        onMoveElement={handleMoveElement}
+        onRemoveElement={handleRemoveElement}
+      />
       <ElementCollection />
     </div>
   )

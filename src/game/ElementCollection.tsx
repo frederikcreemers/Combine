@@ -1,8 +1,21 @@
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
+import type { Doc } from '../../convex/_generated/dataModel'
 
-export function ElementCollection() {
+type ElementCollectionProps = {
+  onDragStart?: (element: Doc<'elements'>) => void
+}
+
+export function ElementCollection({ onDragStart }: ElementCollectionProps) {
   const unlockedElements = useQuery(api.game.listUnlockedElements)
+
+  const handleDragStart = (e: DragEvent, element: Doc<'elements'>) => {
+    if (!e.dataTransfer) return
+    
+    e.dataTransfer.setData('application/element', JSON.stringify(element))
+    e.dataTransfer.effectAllowed = 'copy'
+    onDragStart?.(element)
+  }
 
   if (unlockedElements === undefined) {
     return (
@@ -19,13 +32,15 @@ export function ElementCollection() {
         {unlockedElements.map((element) => (
           <div
             key={element._id}
-            class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-pointer"
+            class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-grab active:cursor-grabbing select-none"
+            draggable
+            onDragStart={(e) => handleDragStart(e, element as Doc<'elements'>)}
           >
             <div
-              class="w-8 h-8 flex-shrink-0"
+              class="w-8 h-8 flex-shrink-0 pointer-events-none"
               dangerouslySetInnerHTML={{ __html: element.SVG }}
             />
-            <span class="text-sm text-gray-700 truncate">{element.name}</span>
+            <span class="text-sm text-gray-700 truncate pointer-events-none">{element.name}</span>
           </div>
         ))}
       </div>
