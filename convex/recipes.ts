@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const findCombination = query({
@@ -24,5 +24,31 @@ export const findCombination = query({
       .collect();
 
     return recipes.map((recipe) => recipe.result);
+  },
+});
+
+export const listRecipes = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("recipes")
+      .order("desc")
+      .collect();
+  },
+});
+
+export const addRecipe = mutation({
+  args: {
+    ingredient1: v.id("elements"),
+    ingredient2: v.id("elements"),
+    result: v.id("elements"),
+  },
+  handler: async (ctx, args) => {
+    const recipeId = await ctx.db.insert("recipes", {
+      ingredient1: args.ingredient1,
+      ingredient2: args.ingredient2,
+      result: args.result,
+    });
+    return recipeId;
   },
 });
