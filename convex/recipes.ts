@@ -2,6 +2,7 @@ import { action, internalMutation, internalQuery, mutation, query } from "./_gen
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { generateRecipe as generateRecipeAI } from "./ai";
+import type { Doc } from "./_generated/dataModel";
 
 export const findCombination = query({
   args: {
@@ -191,7 +192,7 @@ export const generateRecipe = action({
 
     // Build examples from existing recipes
     const recipeExamples = await Promise.all(
-      allRecipes.map(async (recipe) => {
+      allRecipes.map(async (recipe: Doc<"recipes">) => {
         const ing1 = await ctx.runQuery(internal.elements.getElementPublic, {
           elementId: recipe.ingredient1,
         });
@@ -207,7 +208,7 @@ export const generateRecipe = action({
         return null;
       })
     );
-    const recipeExamplesText = recipeExamples.filter((r) => r !== null).join("\n");
+    const recipeExamplesText = recipeExamples.filter((r): r is string => r !== null).join("\n");
 
     const result = await generateRecipeAI(element1.name, element2.name, recipeExamplesText);
 

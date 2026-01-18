@@ -1,4 +1,6 @@
-import { mutation, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const listUnlockedElements = query({
@@ -64,5 +66,107 @@ export const unlockInitialElements = mutation({
         });
       }
     }
+  },
+});
+
+export const findRecipeResult = internalQuery({
+  args: {
+    element1: v.id("elements"),
+    element2: v.id("elements"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Find recipe with these ingredients (check both orderings)
+    const recipe = await ctx.db
+      .query("recipes")
+      .filter((q) =>
+        q.or(
+          q.and(
+            q.eq(q.field("ingredient1"), args.element1),
+            q.eq(q.field("ingredient2"), args.element2)
+          ),
+          q.and(
+            q.eq(q.field("ingredient1"), args.element2),
+            q.eq(q.field("ingredient2"), args.element1)
+          )
+        )
+      )
+      .first();
+
+    if (!recipe) {
+      return null;
+    }
+
+    // Get the result element
+    const resultElement = await ctx.db.get(recipe.result);
+    if (!resultElement) {
+      return null;
+    }
+
+    // Check if user already has this element unlocked
+    const existingUnlock = await ctx.db
+      .query("unlockedElements")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("elementId"), recipe.result))
+      .first();
+
+    return {
+      element: {
+        _id: resultElement._id,
+        name: resultElement.name,
+        SVG: resultElement.SVG,
+      },
+      alreadyUnlocked: !!existingUnlock,
+    };
+  },
+});
+
+export const unlockElement = internalMutation({
+  args: {
+    elementId: v.id("elements"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("unlockedElements", {
+      elementId: args.elementId,
+      userId: args.userId,
+    });
+  },
+});
+
+export const combine = action({
+  args: {
+    element1: v.id("elements"),
+    element2: v.id("elements"),
+  },
+  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string }; new: boolean } | null> => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("User is not authenticated");
+    }
+
+    const result = await ctx.runQuery(internal.game.findRecipeResult, {
+      element1: args.element1,
+      element2: args.element2,
+      userId,
+    });
+
+    if (!result) {
+      return null;
+    }
+
+    const isNew = !result.alreadyUnlocked;
+
+    if (isNew) {
+      await ctx.runMutation(internal.game.unlockElement, {
+        elementId: result.element._id,
+        userId,
+      });
+    }
+
+    return {
+      element: result.element,
+      new: isNew,
+    };
   },
 });
