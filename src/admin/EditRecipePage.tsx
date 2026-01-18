@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'preact/hooks'
+import { useState, useEffect, useMemo } from 'preact/hooks'
 import { useQuery, useMutation } from 'convex/react'
 import { useLocation } from 'preact-iso/router'
 import { api } from '../../convex/_generated/api'
@@ -23,6 +23,11 @@ export function EditRecipePage({ id }: { id: string }) {
       setResult(recipe.result)
     }
   }, [recipe])
+
+  const sortedElements = useMemo(() => {
+    if (!elements) return []
+    return [...elements].sort((a, b) => a.name.localeCompare(b.name))
+  }, [elements])
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault()
@@ -94,7 +99,7 @@ export function EditRecipePage({ id }: { id: string }) {
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select an element</option>
-              {elements.map((element) => (
+              {sortedElements.map((element) => (
                 <option key={element._id} value={element._id}>
                   {element.name}
                 </option>
@@ -113,7 +118,7 @@ export function EditRecipePage({ id }: { id: string }) {
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select an element</option>
-              {elements.map((element) => (
+              {sortedElements.map((element) => (
                 <option key={element._id} value={element._id}>
                   {element.name}
                 </option>
@@ -132,7 +137,7 @@ export function EditRecipePage({ id }: { id: string }) {
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select an element</option>
-              {elements.map((element) => (
+              {sortedElements.map((element) => (
                 <option key={element._id} value={element._id}>
                   {element.name}
                 </option>

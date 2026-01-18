@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useState, useMemo } from 'preact/hooks'
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import type { Id } from '../../convex/_generated/dataModel'
@@ -19,6 +19,11 @@ export function AddRecipeForm() {
       ? { element1: ingredient1 as Id<'elements'>, element2: ingredient2 as Id<'elements'> }
       : 'skip'
   )
+
+  const sortedElements = useMemo(() => {
+    if (!elements) return []
+    return [...elements].sort((a, b) => a.name.localeCompare(b.name))
+  }, [elements])
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault()
@@ -101,7 +106,7 @@ export function AddRecipeForm() {
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select an element</option>
-            {elements.map((element) => (
+            {sortedElements.map((element) => (
               <option key={element._id} value={element._id}>
                 {element.name}
               </option>
@@ -119,7 +124,7 @@ export function AddRecipeForm() {
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select an element</option>
-            {elements.map((element) => (
+            {sortedElements.map((element) => (
               <option key={element._id} value={element._id}>
                 {element.name}
               </option>
@@ -142,7 +147,7 @@ export function AddRecipeForm() {
             <option value="">Select an element</option>
             <option value="GENERATE">GENERATE</option>
             <option value="NEW_ELEMENT">NEW ELEMENT</option>
-            {elements.map((element) => (
+            {sortedElements.map((element) => (
               <option key={element._id} value={element._id}>
                 {element.name}
               </option>

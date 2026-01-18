@@ -66,7 +66,7 @@ export function ElementsList() {
           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
-      <div class="grid grid-cols-5 gap-4">
+      <div class="grid grid-cols-6 gap-4">
         {filteredElements.map((element) => (
           <a
             key={element._id}
@@ -80,7 +80,7 @@ export function ElementsList() {
           </a>
         ))}
         {filteredElements.length === 0 && searchQuery && (
-          <p class="text-sm text-gray-500 col-span-5 text-center py-4">No elements found</p>
+          <p class="text-sm text-gray-500 col-span-6 text-center py-4">No elements found</p>
         )}
       </div>
     </div>
