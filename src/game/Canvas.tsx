@@ -17,7 +17,8 @@ type CanvasProps = {
   onCombine: (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null) => Promise<boolean>
 }
 
-const ELEMENT_SIZE = 64
+const ELEMENT_WIDTH = 64
+const ELEMENT_HEIGHT = 80
 
 export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onBringToFront, onCombine }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -31,9 +32,9 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       if (excludeId && el.id === excludeId) continue
       if (
         x >= el.x &&
-        x <= el.x + ELEMENT_SIZE &&
+        x <= el.x + ELEMENT_WIDTH &&
         y >= el.y &&
-        y <= el.y + ELEMENT_SIZE
+        y <= el.y + ELEMENT_HEIGHT
       ) {
         return el
       }
@@ -110,9 +111,9 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
             triggerShake(targetElement.id)
           }
         } else {
-          // Just adding to canvas
-          const x = dropX - 32 // Center the 64px element
-          const y = dropY - 32
+          // Just adding to canvas - center the element on cursor
+          const x = dropX - ELEMENT_WIDTH / 2
+          const y = dropY - ELEMENT_HEIGHT / 2
           onAddElement(element, x, y)
         }
       }
@@ -189,7 +190,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
         return (
           <div
             key={canvasElement.id}
-            class={`absolute w-16 h-16 flex flex-col items-center cursor-grab active:cursor-grabbing select-none ${isShaking ? 'shake' : ''}`}
+            class={`absolute w-16 h-20 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none bg-white border border-gray-400 rounded-md p-1 ${isShaking ? 'shake' : ''}`}
             style={{
               left: `${canvasElement.x}px`,
               top: `${canvasElement.y}px`,
@@ -200,7 +201,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
             onDragEnd={(e) => handleElementDragEnd(e, canvasElement)}
           >
             <div
-              class="w-12 h-12 pointer-events-none"
+              class="w-10 h-10 pointer-events-none flex items-center justify-center"
               dangerouslySetInnerHTML={{ __html: canvasElement.element.SVG }}
             />
             <span class="text-xs text-gray-700 mt-1 whitespace-nowrap pointer-events-none">
