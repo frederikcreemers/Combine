@@ -7,9 +7,9 @@ import type { Id } from '../../convex/_generated/dataModel'
 export function EditRecipePage({ id }: { id: string }) {
   const location = useLocation()
   const recipeId = id as Id<'recipes'>
-  const recipe = useQuery(api.recipes.getRecipe, { recipeId })
+  const recipe = useQuery(api.admin.getRecipe, { recipeId })
   const elements = useQuery(api.elements.listElements)
-  const updateRecipe = useMutation(api.recipes.updateRecipe)
+  const updateRecipe = useMutation(api.admin.updateRecipe)
 
   const [ingredient1, setIngredient1] = useState<Id<'elements'> | ''>('')
   const [ingredient2, setIngredient2] = useState<Id<'elements'> | ''>('')

@@ -9,12 +9,12 @@ export function AddRecipeForm() {
   const [result, setResult] = useState<Id<'elements'> | 'NEW_ELEMENT' | 'GENERATE' | ''>('')
   const [newElementName, setNewElementName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const addRecipe = useMutation(api.recipes.addRecipe)
-  const addElement = useAction(api.elements.addElement)
-  const generateRecipe = useAction(api.recipes.generateRecipe)
+  const addRecipe = useMutation(api.admin.addRecipe)
+  const addElement = useAction(api.admin.addElement)
+  const generateRecipe = useAction(api.admin.generateRecipe)
   const elements = useQuery(api.elements.listElements)
   const existingCombinations = useQuery(
-    api.recipes.findCombination,
+    api.admin.findCombination,
     ingredient1 && ingredient2
       ? { element1: ingredient1 as Id<'elements'>, element2: ingredient2 as Id<'elements'> }
       : 'skip'

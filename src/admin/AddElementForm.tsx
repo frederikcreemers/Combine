@@ -6,7 +6,7 @@ export function AddElementForm() {
   const [name, setName] = useState('')
   const [svg, setSvg] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const addElement = useAction(api.elements.addElement)
+  const addElement = useAction(api.admin.addElement)
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault()

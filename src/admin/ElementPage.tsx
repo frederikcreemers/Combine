@@ -16,13 +16,13 @@ export function ElementPage({ id }: ElementPageProps) {
   const [editSVG, setEditSVG] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const element = useQuery(api.elements.getElementPublicQuery, { elementId });
-  const recipesForElement = useQuery(api.recipes.getRecipesForElement, { elementId });
-  const recipesUsingElement = useQuery(api.recipes.getRecipesUsingElement, { elementId });
+  const element = useQuery(api.admin.getElement, { elementId });
+  const recipesForElement = useQuery(api.admin.getRecipesForElement, { elementId });
+  const recipesUsingElement = useQuery(api.admin.getRecipesUsingElement, { elementId });
   const allElements = useQuery(api.elements.listElements);
-  const deleteElement = useMutation(api.elements.deleteElement);
-  const updateElement = useMutation(api.elements.updateElement);
-  const regenerateSVG = useAction(api.elements.regenerateSVG);
+  const deleteElement = useMutation(api.admin.deleteElement);
+  const updateElement = useMutation(api.admin.updateElement);
+  const regenerateSVG = useAction(api.admin.regenerateSVG);
   
   const [showRegenerateForm, setShowRegenerateForm] = useState(false);
   const [regenerateFeedback, setRegenerateFeedback] = useState("");

@@ -3,9 +3,9 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 
 export function RecipeList() {
-  const recipes = useQuery(api.recipes.listRecipes);
+  const recipes = useQuery(api.admin.listRecipes);
   const elements = useQuery(api.elements.listElements);
-  const deleteRecipe = useMutation(api.recipes.deleteRecipe);
+  const deleteRecipe = useMutation(api.admin.deleteRecipe);
 
   const handleDelete = async (recipeId: Id<"recipes">, ingredient1Name: string, ingredient2Name: string, resultName: string) => {
     const confirmed = confirm(
