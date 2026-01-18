@@ -62,6 +62,15 @@ export const findByName = internalQuery({
   },
 });
 
+export const getElement = query({
+  args: {
+    elementId: v.id("elements"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.elementId);
+  },
+});
+
 export const listElements = query({
   args: {},
   handler: async (ctx) => {

@@ -37,6 +37,35 @@ export const listRecipes = query({
   },
 });
 
+export const getRecipesForElement = query({
+  args: {
+    elementId: v.id("elements"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("recipes")
+      .filter((q) => q.eq(q.field("result"), args.elementId))
+      .collect();
+  },
+});
+
+export const getRecipesUsingElement = query({
+  args: {
+    elementId: v.id("elements"),
+  },
+  handler: async (ctx, args) => {
+    const asIngredient1 = await ctx.db
+      .query("recipes")
+      .filter((q) => q.eq(q.field("ingredient1"), args.elementId))
+      .collect();
+    const asIngredient2 = await ctx.db
+      .query("recipes")
+      .filter((q) => q.eq(q.field("ingredient2"), args.elementId))
+      .collect();
+    return [...asIngredient1, ...asIngredient2];
+  },
+});
+
 export const addRecipe = mutation({
   args: {
     ingredient1: v.id("elements"),
