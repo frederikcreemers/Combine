@@ -97,6 +97,9 @@ export function LoginModal({ isOpen, onClose, onBack }: LoginModalProps) {
           >
             {isSubmitting ? 'Sending...' : 'Send sign-in link'}
           </button>
+          <p class="text-sm text-gray-500 text-center mt-3">
+            You will receive no email from us except for the link to log in.
+          </p>
         </form>
       )}
     </Modal>

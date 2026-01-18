@@ -10,6 +10,7 @@ import { AccountModal } from './AccountModal'
 import { LoginModal } from './LoginModal'
 import { DiscoveredItemsModal } from './DiscoveredItemsModal'
 import { AboutModal } from './AboutModal'
+import { LoginRequiredModal } from './LoginRequiredModal'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 
@@ -33,6 +34,7 @@ export function GamePage() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
   const [isDiscoveriesModalOpen, setIsDiscoveriesModalOpen] = useState(false)
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
+  const [isLoginRequiredModalOpen, setIsLoginRequiredModalOpen] = useState(false)
 
   useRunAfterSignIn(() => {
     unlockInitialElements()
@@ -85,7 +87,12 @@ export function GamePage() {
           element2: element2Id,
         })
 
-        if (result) {
+        if (result && 'requiresLogin' in result && result.requiresLogin) {
+          setIsLoginRequiredModalOpen(true)
+          return false
+        }
+
+        if (result && 'element' in result) {
           // Get position of the target element (the one being dropped onto)
           const targetElement = canvasElements.find((el) => el.id === canvasId2)
           const position = targetElement ? { x: targetElement.x, y: targetElement.y } : { x: 100, y: 100 }
@@ -186,6 +193,14 @@ export function GamePage() {
       <AboutModal
         isOpen={isAboutModalOpen}
         onClose={() => setIsAboutModalOpen(false)}
+      />
+      <LoginRequiredModal
+        isOpen={isLoginRequiredModalOpen}
+        onClose={() => setIsLoginRequiredModalOpen(false)}
+        onLoginClick={() => {
+          setIsLoginRequiredModalOpen(false)
+          setIsLoginModalOpen(true)
+        }}
       />
     </div>
   )

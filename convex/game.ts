@@ -296,12 +296,28 @@ export const discover = internalAction({
   },
 });
 
+type CombineResult = 
+  | { element: { _id: string; name: string; SVG: string }; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean; requiresLogin?: false }
+  | { requiresLogin: true }
+  | null;
+
+export const isUserAnonymous = internalQuery({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return true;
+    return !user.email;
+  },
+});
+
 export const combine = action({
   args: {
     element1: v.id("elements"),
     element2: v.id("elements"),
   },
-  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string }; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean } | null> => {
+  handler: async (ctx, args): Promise<CombineResult> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("User is not authenticated");
@@ -332,7 +348,16 @@ export const combine = action({
       };
     }
 
-    // No recipe exists - try to discover one
+    // No recipe exists - check if user is anonymous
+    const isAnonymous = await ctx.runQuery(internal.game.isUserAnonymous, {
+      userId,
+    });
+
+    if (isAnonymous) {
+      return { requiresLogin: true };
+    }
+
+    // Try to discover one
     const discoverResult = await ctx.runAction(internal.game.discover, {
       element1: args.element1,
       element2: args.element2,
