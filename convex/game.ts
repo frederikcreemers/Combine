@@ -1,6 +1,6 @@
 import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
 import { rateLimiter } from "./rateLimits";
@@ -364,7 +364,7 @@ export const combine = action({
       key: userId,
     });
 
-    if (!rateLimitStatus.ok) {
+    if (!rateLimitStatus.ok && !(await ctx.runQuery(api.users.isAdmin)))   {
       return { rateLimitExceeded: true };
     }
 
