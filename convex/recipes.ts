@@ -73,6 +73,33 @@ export const addRecipe = mutation({
     result: v.id("elements"),
   },
   handler: async (ctx, args) => {
+    // Check if a recipe with the same ingredients (in any order) and result already exists
+    const existingRecipe1 = await ctx.db
+      .query("recipes")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("ingredient1"), args.ingredient1),
+          q.eq(q.field("ingredient2"), args.ingredient2),
+          q.eq(q.field("result"), args.result)
+        )
+      )
+      .first();
+
+    const existingRecipe2 = await ctx.db
+      .query("recipes")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("ingredient1"), args.ingredient2),
+          q.eq(q.field("ingredient2"), args.ingredient1),
+          q.eq(q.field("result"), args.result)
+        )
+      )
+      .first();
+
+    if (existingRecipe1 || existingRecipe2) {
+      throw new Error("A recipe with these ingredients and result already exists");
+    }
+
     const recipeId = await ctx.db.insert("recipes", {
       ingredient1: args.ingredient1,
       ingredient2: args.ingredient2,

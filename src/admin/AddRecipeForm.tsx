@@ -50,6 +50,8 @@ export function AddRecipeForm() {
       setNewElementName('')
     } catch (error) {
       console.error('Failed to add recipe:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add recipe'
+      alert(errorMessage)
     } finally {
       setIsLoading(false)
     }
