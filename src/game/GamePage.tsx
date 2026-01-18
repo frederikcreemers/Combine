@@ -11,6 +11,7 @@ import type { Doc, Id } from '../../convex/_generated/dataModel'
 type NewElement = {
   name: string
   SVG: string
+  discovered: boolean
 }
 
 let nextCanvasElementId = 0
@@ -87,11 +88,12 @@ export function GamePage() {
             return [...filtered, newElement]
           })
 
-          // Show new element display if this is a newly discovered element
+          // Show new element display if this is a newly unlocked element
           if (result.new) {
             setNewElementToShow({
               name: result.element.name,
               SVG: result.element.SVG,
+              discovered: result.discovered,
             })
           }
 
@@ -135,6 +137,7 @@ export function GamePage() {
       {newElementToShow && (
         <NewElementDisplay
           element={newElementToShow}
+          discovered={newElementToShow.discovered}
           onDismiss={() => setNewElementToShow(null)}
         />
       )}

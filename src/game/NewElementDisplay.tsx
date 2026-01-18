@@ -5,10 +5,11 @@ type NewElementDisplayProps = {
     name: string
     SVG: string
   }
+  discovered?: boolean
   onDismiss: () => void
 }
 
-export function NewElementDisplay({ element, onDismiss }: NewElementDisplayProps) {
+export function NewElementDisplay({ element, discovered, onDismiss }: NewElementDisplayProps) {
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
@@ -64,6 +65,11 @@ export function NewElementDisplay({ element, onDismiss }: NewElementDisplayProps
         />
         <span class="text-xl text-gray-700 mt-2">{element.name}</span>
       </div>
+      {discovered && (
+        <p class="text-yellow-300 text-lg font-semibold mt-6 relative z-10">
+          You were the first to discover this element!
+        </p>
+      )}
       <p class="text-white text-sm mt-8 opacity-75 relative z-10">Click anywhere to continue</p>
     </div>
   )
