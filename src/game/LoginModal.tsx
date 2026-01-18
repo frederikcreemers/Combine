@@ -1,5 +1,7 @@
 import { useState } from 'preact/hooks'
+import { useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
+import { api } from '../../convex/_generated/api'
 
 type LoginModalProps = {
   isOpen: boolean
@@ -8,6 +10,7 @@ type LoginModalProps = {
 }
 
 export function LoginModal({ isOpen, onClose, onBack }: LoginModalProps) {
+  const currentUser = useQuery(api.users.getCurrentUser)
   const { signIn } = useAuthActions()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -23,6 +26,9 @@ export function LoginModal({ isOpen, onClose, onBack }: LoginModalProps) {
     try {
       const formData = new FormData()
       formData.set('email', email)
+      if (currentUser?.id) {
+        formData.set('redirectTo', `/link/${currentUser.id}`)
+      }
       await signIn('resend', formData)
       setEmailSent(true)
     } catch (error) {
