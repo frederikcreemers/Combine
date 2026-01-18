@@ -37,21 +37,26 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  const sortedElements = useMemo(() => {
+    if (!unlockedElements) return []
+    return [...unlockedElements].sort((a, b) => a.name.localeCompare(b.name))
+  }, [unlockedElements])
+
   const fuse = useMemo(() => {
-    if (!unlockedElements) return null
-    return new Fuse(unlockedElements, {
+    if (!sortedElements.length) return null
+    return new Fuse(sortedElements, {
       keys: ['name'],
       threshold: 0.4,
       ignoreLocation: true,
     })
-  }, [unlockedElements])
+  }, [sortedElements])
 
   const filteredElements = useMemo(() => {
-    if (!unlockedElements) return []
-    if (!searchQuery.trim()) return unlockedElements
-    if (!fuse) return unlockedElements
+    if (!sortedElements.length) return []
+    if (!searchQuery.trim()) return sortedElements
+    if (!fuse) return sortedElements
     return fuse.search(searchQuery).map((result) => result.item)
-  }, [unlockedElements, searchQuery, fuse])
+  }, [sortedElements, searchQuery, fuse])
 
   const handleDragStart = (e: DragEvent, element: Doc<'elements'>) => {
     if (!e.dataTransfer) return
