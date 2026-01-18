@@ -97,7 +97,7 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
       <div class="p-4 pt-2 border-t border-gray-200">
         <input
           type="text"
-          placeholder="Search elements..."
+          placeholder={`Search ${unlockedElements.length} elements...`}
           value={searchQuery}
           onInput={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
