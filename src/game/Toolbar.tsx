@@ -2,9 +2,10 @@ type ToolbarProps = {
   onClearCanvas: () => void
   onAccountClick: () => void
   onDiscoveriesClick: () => void
+  onAboutClick: () => void
 }
 
-export function Toolbar({ onClearCanvas, onAccountClick, onDiscoveriesClick }: ToolbarProps) {
+export function Toolbar({ onClearCanvas, onAccountClick, onDiscoveriesClick, onAboutClick }: ToolbarProps) {
   return (
     <div class="w-12 bg-red-950 flex flex-col items-center py-2 gap-2">
       <button
@@ -79,6 +80,31 @@ export function Toolbar({ onClearCanvas, onAccountClick, onDiscoveriesClick }: T
         {/* Tooltip */}
         <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
           Account
+        </span>
+      </button>
+
+      <button
+        onClick={onAboutClick}
+        class="w-10 h-10 flex items-center justify-center rounded-lg bg-red-900 hover:bg-red-800 transition-colors group relative"
+        title="About"
+      >
+        {/* Info icon */}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="w-6 h-6 text-red-200"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+        {/* Tooltip */}
+        <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+          About
         </span>
       </button>
     </div>
