@@ -179,6 +179,21 @@ export const findRecipeResult = internalQuery({
   },
 });
 
+export const isElementUnlocked = internalQuery({
+  args: {
+    elementId: v.id("elements"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("unlockedElements")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("elementId"), args.elementId))
+      .first();
+    return !!existing;
+  },
+});
+
 export const unlockElement = internalMutation({
   args: {
     elementId: v.id("elements"),
@@ -257,11 +272,18 @@ export const discover = internalAction({
       result: resultElementId,
     });
 
-    // Unlock the element for the user
-    await ctx.runMutation(internal.game.unlockElement, {
+    // Unlock the element for the user if they don't already have it
+    const alreadyUnlocked = await ctx.runQuery(internal.game.isElementUnlocked, {
       elementId: resultElementId,
       userId: args.userId,
     });
+
+    if (!alreadyUnlocked) {
+      await ctx.runMutation(internal.game.unlockElement, {
+        elementId: resultElementId,
+        userId: args.userId,
+      });
+    }
 
     return {
       element: {

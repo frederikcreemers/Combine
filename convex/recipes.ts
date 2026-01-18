@@ -1,6 +1,8 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
+const MIN_EXAMPLES = 30;
+
 export const getRecipeExamplesText = internalQuery({
   args: {
     element1: v.id("elements"),
@@ -19,8 +21,23 @@ export const getRecipeExamplesText = internalQuery({
       recipe.result === args.element2
     );
     
+    // If we have fewer than MIN_EXAMPLES, supplement with oldest recipes
+    let recipesToUse = relevantRecipes;
+    if (relevantRecipes.length < MIN_EXAMPLES) {
+      const relevantIds = new Set(relevantRecipes.map((r) => r._id.toString()));
+      const needed = MIN_EXAMPLES - relevantRecipes.length;
+      
+      // Get oldest recipes (by creation time) that aren't already included
+      const oldestRecipes = allRecipes
+        .filter((r) => !relevantIds.has(r._id.toString()))
+        .sort((a, b) => a._creationTime - b._creationTime)
+        .slice(0, needed);
+      
+      recipesToUse = [...relevantRecipes, ...oldestRecipes];
+    }
+    
     const examples = await Promise.all(
-      relevantRecipes.map(async (recipe) => {
+      recipesToUse.map(async (recipe) => {
         const ing1 = await ctx.db.get(recipe.ingredient1);
         const ing2 = await ctx.db.get(recipe.ingredient2);
         const res = await ctx.db.get(recipe.result);
