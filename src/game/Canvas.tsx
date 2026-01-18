@@ -1,5 +1,5 @@
 import type { Doc } from '../../convex/_generated/dataModel'
-import { useRef } from 'preact/hooks'
+import { useRef, useState } from 'preact/hooks'
 
 export type CanvasElement = {
   id: string
@@ -17,7 +17,7 @@ type CanvasProps = {
 
 export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
-  const draggedElementId = useRef<string | null>(null)
+  const [draggingElementId, setDraggingElementId] = useState<string | null>(null)
   const dragOffset = useRef({ x: 0, y: 0 })
 
   const handleDragOver = (e: DragEvent) => {
@@ -55,7 +55,6 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
   const handleElementDragStart = (e: DragEvent, canvasElement: CanvasElement) => {
     if (!e.dataTransfer) return
     
-    draggedElementId.current = canvasElement.id
     e.dataTransfer.setData('application/canvas-element-id', canvasElement.id)
     e.dataTransfer.effectAllowed = 'copyMove'
     
@@ -66,9 +65,16 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       x: e.clientX - rect.left,
       y: e.clientY - rect.top,
     }
+    
+    // Delay hiding the element so the browser can capture the drag image first
+    requestAnimationFrame(() => {
+      setDraggingElementId(canvasElement.id)
+    })
   }
 
   const handleElementDragEnd = (e: DragEvent, canvasElement: CanvasElement) => {
+    setDraggingElementId(null)
+    
     if (!canvasRef.current) return
 
     const rect = canvasRef.current.getBoundingClientRect()
@@ -81,8 +87,6 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
     if (isOutsideCanvas) {
       onRemoveElement(canvasElement.id)
     }
-
-    draggedElementId.current = null
   }
 
   return (
@@ -92,27 +96,31 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      {elements.map((canvasElement) => (
-        <div
-          key={canvasElement.id}
-          class="absolute w-16 h-16 flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
-          style={{
-            left: `${canvasElement.x}px`,
-            top: `${canvasElement.y}px`,
-          }}
-          draggable
-          onDragStart={(e) => handleElementDragStart(e, canvasElement)}
-          onDragEnd={(e) => handleElementDragEnd(e, canvasElement)}
-        >
+      {elements.map((canvasElement) => {
+        const isDragging = canvasElement.id === draggingElementId
+        return (
           <div
-            class="w-12 h-12 pointer-events-none"
-            dangerouslySetInnerHTML={{ __html: canvasElement.element.SVG }}
-          />
-          <span class="text-xs text-gray-700 mt-1 whitespace-nowrap pointer-events-none">
-            {canvasElement.element.name}
-          </span>
-        </div>
-      ))}
+            key={canvasElement.id}
+            class="absolute w-16 h-16 flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
+            style={{
+              left: `${canvasElement.x}px`,
+              top: `${canvasElement.y}px`,
+              opacity: isDragging ? 0 : 1,
+            }}
+            draggable
+            onDragStart={(e) => handleElementDragStart(e, canvasElement)}
+            onDragEnd={(e) => handleElementDragEnd(e, canvasElement)}
+          >
+            <div
+              class="w-12 h-12 pointer-events-none"
+              dangerouslySetInnerHTML={{ __html: canvasElement.element.SVG }}
+            />
+            <span class="text-xs text-gray-700 mt-1 whitespace-nowrap pointer-events-none">
+              {canvasElement.element.name}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }
