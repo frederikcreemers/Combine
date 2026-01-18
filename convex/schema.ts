@@ -18,4 +18,7 @@ export default defineSchema({
     elementId: v.id("elements"),
     userId: v.id("users"),
   }).index("by_user", ["userId"]),
+  adminUsers: defineTable({
+    userId: v.id("users"),
+  }).index("by_user", ["userId"]),
 });
