@@ -47,6 +47,14 @@ export function GamePage() {
     setCanvasElements((prev) => prev.filter((el) => el.id !== id))
   }, [])
 
+  const handleBringToFront = useCallback((id: string) => {
+    setCanvasElements((prev) => {
+      const element = prev.find((el) => el.id === id)
+      if (!element) return prev
+      return [...prev.filter((el) => el.id !== id), element]
+    })
+  }, [])
+
   const handleCombine = useCallback(
     async (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null): Promise<boolean> => {
       try {
@@ -104,6 +112,7 @@ export function GamePage() {
         onAddElement={handleAddElement}
         onMoveElement={handleMoveElement}
         onRemoveElement={handleRemoveElement}
+        onBringToFront={handleBringToFront}
         onCombine={handleCombine}
       />
       <ElementCollection />

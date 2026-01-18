@@ -13,14 +13,16 @@ type CanvasProps = {
   onAddElement: (element: Doc<'elements'>, x: number, y: number) => void
   onMoveElement: (id: string, x: number, y: number) => void
   onRemoveElement: (id: string) => void
+  onBringToFront: (id: string) => void
   onCombine: (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null) => Promise<boolean>
 }
 
 const ELEMENT_SIZE = 64
 
-export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onCombine }: CanvasProps) {
+export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onBringToFront, onCombine }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null)
+  const [combiningElementId, setCombiningElementId] = useState<string | null>(null)
   const [shakingElementId, setShakingElementId] = useState<string | null>(null)
   const dragOffset = useRef({ x: 0, y: 0 })
 
@@ -68,12 +70,14 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
 
       if (targetElement && draggedElement) {
         // Dropped on another element - combine them
+        setCombiningElementId(canvasElementId)
         const success = await onCombine(
           draggedElement.element._id,
           targetElement.element._id,
           draggedElement.id,
           targetElement.id
         )
+        setCombiningElementId(null)
         if (!success) {
           // Move the dragged element to the drop position and shake it
           const x = dropX - dragOffset.current.x
@@ -129,6 +133,9 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       y: e.clientY - rect.top,
     }
     
+    // Move element to end of list so it renders on top
+    onBringToFront(canvasElement.id)
+    
     // Delay hiding the element so the browser can capture the drag image first
     requestAnimationFrame(() => {
       setDraggingElementId(canvasElement.id)
@@ -176,7 +183,9 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       `}</style>
       {elements.map((canvasElement) => {
         const isDragging = canvasElement.id === draggingElementId
+        const isCombining = canvasElement.id === combiningElementId
         const isShaking = canvasElement.id === shakingElementId
+        const isHidden = isDragging || isCombining
         return (
           <div
             key={canvasElement.id}
@@ -184,7 +193,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
             style={{
               left: `${canvasElement.x}px`,
               top: `${canvasElement.y}px`,
-              opacity: isDragging ? 0 : 1,
+              opacity: isHidden ? 0 : 1,
             }}
             draggable
             onDragStart={(e) => handleElementDragStart(e, canvasElement)}
