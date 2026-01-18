@@ -1,16 +1,20 @@
-import { useConvexAuth } from 'convex/react'
+import { useConvexAuth, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useEffect } from 'preact/hooks'
+import { api } from '../../convex/_generated/api'
 
 export function GamePage() {
   const { isAuthenticated, isLoading } = useConvexAuth()
   const { signIn } = useAuthActions()
+  const unlockInitialElements = useMutation(api.game.unlockInitialElements)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      signIn('anonymous')
+      signIn('anonymous').then(() => {
+        unlockInitialElements()
+      })
     }
-  }, [isLoading, isAuthenticated, signIn])
+  }, [isLoading, isAuthenticated, signIn, unlockInitialElements])
 
   if (isLoading || !isAuthenticated) {
     return (

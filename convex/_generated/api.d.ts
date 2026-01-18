@@ -11,6 +11,7 @@
 import type * as ai from "../ai.js";
 import type * as auth from "../auth.js";
 import type * as elements from "../elements.js";
+import type * as game from "../game.js";
 import type * as http from "../http.js";
 import type * as recipes from "../recipes.js";
 
@@ -24,6 +25,7 @@ declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   auth: typeof auth;
   elements: typeof elements;
+  game: typeof game;
   http: typeof http;
   recipes: typeof recipes;
 }>;

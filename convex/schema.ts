@@ -13,4 +13,8 @@ export default defineSchema({
     ingredient2: v.id("elements"),
     result: v.id("elements"),
   }),
+  unlockedElements: defineTable({
+    elementId: v.id("elements"),
+    userId: v.id("users"),
+  }).index("by_user", ["userId"]),
 });
