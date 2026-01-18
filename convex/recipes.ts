@@ -1,20 +1,26 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
-export const listRecipesForGeneration = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("recipes").collect();
-  },
-});
-
 export const getRecipeExamplesText = internalQuery({
-  args: {},
-  handler: async (ctx): Promise<string> => {
+  args: {
+    element1: v.id("elements"),
+    element2: v.id("elements"),
+  },
+  handler: async (ctx, args): Promise<string> => {
     const allRecipes = await ctx.db.query("recipes").collect();
     
+    // Filter to only recipes that involve either of the input elements
+    const relevantRecipes = allRecipes.filter((recipe) =>
+      recipe.ingredient1 === args.element1 ||
+      recipe.ingredient1 === args.element2 ||
+      recipe.ingredient2 === args.element1 ||
+      recipe.ingredient2 === args.element2 ||
+      recipe.result === args.element1 ||
+      recipe.result === args.element2
+    );
+    
     const examples = await Promise.all(
-      allRecipes.map(async (recipe) => {
+      relevantRecipes.map(async (recipe) => {
         const ing1 = await ctx.db.get(recipe.ingredient1);
         const ing2 = await ctx.db.get(recipe.ingredient2);
         const res = await ctx.db.get(recipe.result);

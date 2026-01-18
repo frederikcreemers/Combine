@@ -210,7 +210,10 @@ export const discover = internalAction({
       throw new Error("One or both elements not found");
     }
 
-    const recipeExamplesText = await ctx.runQuery(internal.recipes.getRecipeExamplesText);
+    const recipeExamplesText = await ctx.runQuery(internal.recipes.getRecipeExamplesText, {
+      element1: args.element1,
+      element2: args.element2,
+    });
     const result = await generateRecipeAI(element1.name, element2.name, recipeExamplesText);
 
     let resultName = result.trim();
