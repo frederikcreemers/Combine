@@ -180,6 +180,15 @@ export const deleteElement = mutation({
       await ctx.db.delete(recipe._id);
     }
 
+    // Delete all unlockedElements referencing this element
+    const unlockedElements = await ctx.db
+      .query("unlockedElements")
+      .filter((q) => q.eq(q.field("elementId"), args.elementId))
+      .collect();
+    for (const unlocked of unlockedElements) {
+      await ctx.db.delete(unlocked._id);
+    }
+
     // Delete the element itself
     await ctx.db.delete(args.elementId);
   },
