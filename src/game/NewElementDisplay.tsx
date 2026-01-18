@@ -5,11 +5,12 @@ type NewElementDisplayProps = {
     name: string
     SVG: string
   }
-  discovered?: boolean
+  recipeDiscovered?: boolean
+  elementDiscovered?: boolean
   onDismiss: () => void
 }
 
-export function NewElementDisplay({ element, discovered, onDismiss }: NewElementDisplayProps) {
+export function NewElementDisplay({ element, recipeDiscovered, elementDiscovered, onDismiss }: NewElementDisplayProps) {
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
@@ -65,11 +66,15 @@ export function NewElementDisplay({ element, discovered, onDismiss }: NewElement
         />
         <span class="text-xl text-gray-700 mt-2">{element.name}</span>
       </div>
-      {discovered && (
+      {elementDiscovered ? (
         <p class="text-yellow-300 text-lg font-semibold mt-6 relative z-10">
           You were the first to discover this element!
         </p>
-      )}
+      ) : recipeDiscovered ? (
+        <p class="text-yellow-300 text-lg font-semibold mt-6 relative z-10">
+          You were the first to discover this recipe for {element.name}!
+        </p>
+      ) : null}
       <p class="text-white text-sm mt-8 opacity-75 relative z-10">Click anywhere to continue</p>
     </div>
   )

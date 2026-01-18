@@ -11,7 +11,8 @@ import type { Doc, Id } from '../../convex/_generated/dataModel'
 type NewElement = {
   name: string
   SVG: string
-  discovered: boolean
+  recipeDiscovered: boolean
+  elementDiscovered: boolean
 }
 
 let nextCanvasElementId = 0
@@ -93,7 +94,8 @@ export function GamePage() {
             setNewElementToShow({
               name: result.element.name,
               SVG: result.element.SVG,
-              discovered: result.discovered,
+              recipeDiscovered: result.recipeDiscovered,
+              elementDiscovered: result.elementDiscovered,
             })
           }
 
@@ -137,7 +139,8 @@ export function GamePage() {
       {newElementToShow && (
         <NewElementDisplay
           element={newElementToShow}
-          discovered={newElementToShow.discovered}
+          recipeDiscovered={newElementToShow.recipeDiscovered}
+          elementDiscovered={newElementToShow.elementDiscovered}
           onDismiss={() => setNewElementToShow(null)}
         />
       )}

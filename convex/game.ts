@@ -142,7 +142,7 @@ export const discover = internalAction({
     element2: v.id("elements"),
     userId: v.id("users"),
   },
-  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string } } | null> => {
+  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string }; elementDiscovered: boolean } | null> => {
     const element1 = await ctx.runQuery(internal.elements.getElementPublic, {
       elementId: args.element1,
     });
@@ -172,6 +172,7 @@ export const discover = internalAction({
 
     let resultElementId: Id<"elements">;
     let resultSVG: string;
+    let elementDiscovered = false;
 
     if (existingElement) {
       resultElementId = existingElement._id;
@@ -187,6 +188,7 @@ export const discover = internalAction({
         discoveredBy: args.userId,
       }) as Id<"elements">;
       resultSVG = svg;
+      elementDiscovered = true;
     }
 
     // Create the recipe
@@ -208,6 +210,7 @@ export const discover = internalAction({
         name: resultName,
         SVG: resultSVG,
       },
+      elementDiscovered,
     };
   },
 });
@@ -217,7 +220,7 @@ export const combine = action({
     element1: v.id("elements"),
     element2: v.id("elements"),
   },
-  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string }; new: boolean; discovered: boolean } | null> => {
+  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string }; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean } | null> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("User is not authenticated");
@@ -243,7 +246,8 @@ export const combine = action({
       return {
         element: result.element,
         new: isNew,
-        discovered: false,
+        recipeDiscovered: false,
+        elementDiscovered: false,
       };
     }
 
@@ -261,7 +265,8 @@ export const combine = action({
     return {
       element: discoverResult.element,
       new: true,
-      discovered: true,
+      recipeDiscovered: true,
+      elementDiscovered: discoverResult.elementDiscovered,
     };
   },
 });
