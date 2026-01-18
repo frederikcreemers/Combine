@@ -6,13 +6,19 @@ import type { Id } from '../../convex/_generated/dataModel'
 export function AddRecipeForm() {
   const [ingredient1, setIngredient1] = useState<Id<'elements'> | ''>('')
   const [ingredient2, setIngredient2] = useState<Id<'elements'> | ''>('')
-  const [result, setResult] = useState<Id<'elements'> | 'NEW_ELEMENT' | 'GENERATE'>('')
+  const [result, setResult] = useState<Id<'elements'> | 'NEW_ELEMENT' | 'GENERATE' | ''>('')
   const [newElementName, setNewElementName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const addRecipe = useMutation(api.recipes.addRecipe)
   const addElement = useAction(api.elements.addElement)
   const generateRecipe = useAction(api.recipes.generateRecipe)
   const elements = useQuery(api.elements.listElements)
+  const existingCombinations = useQuery(
+    api.recipes.findCombination,
+    ingredient1 && ingredient2
+      ? { element1: ingredient1 as Id<'elements'>, element2: ingredient2 as Id<'elements'> }
+      : 'skip'
+  )
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault()
@@ -25,6 +31,13 @@ export function AddRecipeForm() {
         return
       }
     }
+    if (result === 'GENERATE' && existingCombinations && existingCombinations.length > 0) {
+      const confirmed = confirm('A recipe with these ingredients already exists. Are you sure you want to generate another one?')
+      if (!confirmed) {
+        return
+      }
+    }
+
     setIsLoading(true)
     try {
       if (result === 'GENERATE') {
@@ -122,7 +135,7 @@ export function AddRecipeForm() {
             value={result}
             onChange={(e) => {
               const value = (e.target as HTMLSelectElement).value
-              setResult(value as Id<'elements'> | 'NEW_ELEMENT' | 'GENERATE')
+              setResult(value as Id<'elements'> | 'NEW_ELEMENT' | 'GENERATE' | '')
             }}
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
