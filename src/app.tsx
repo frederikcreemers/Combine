@@ -1,5 +1,12 @@
-import { Router } from 'preact-iso/router'
+import { LocationProvider, Router, Route } from 'preact-iso/router'
+import { AdminPage } from './admin/AdminPage'
 
 export function App() {
-  return <Router>{/* Routes will be defined here */}</Router>
+  return (
+    <LocationProvider>
+      <Router>
+        <Route path="/admin" component={AdminPage} />
+      </Router>
+    </LocationProvider>
+  )
 }
