@@ -2,19 +2,25 @@ import { useConvexAuth, useMutation } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useEffect } from 'preact/hooks'
 import { api } from '../../convex/_generated/api'
+import { Canvas } from './Canvas'
+import { ElementCollection } from './ElementCollection'
+import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
 
 export function GamePage() {
   const { isAuthenticated, isLoading } = useConvexAuth()
-  const { signIn } = useAuthActions()
+  const { signIn, signOut } = useAuthActions()
   const unlockInitialElements = useMutation(api.game.unlockInitialElements)
 
+  useRunAfterSignIn(() => {
+    unlockInitialElements()
+  })
+
   useEffect(() => {
+    (window as any).signOut = signOut
     if (!isLoading && !isAuthenticated) {
-      signIn('anonymous').then(() => {
-        unlockInitialElements()
-      })
+      signIn('anonymous')
     }
-  }, [isLoading, isAuthenticated, signIn, unlockInitialElements])
+  }, [isLoading, isAuthenticated, signIn, signOut])
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -31,8 +37,9 @@ export function GamePage() {
   }
 
   return (
-    <div class="min-h-screen bg-gray-100 p-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-8">Combine</h1>
+    <div class="h-screen flex">
+      <Canvas />
+      <ElementCollection />
     </div>
   )
 }
