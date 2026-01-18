@@ -85,6 +85,27 @@ export const listElements = query({
   },
 });
 
+export const updateElement = mutation({
+  args: {
+    elementId: v.id("elements"),
+    name: v.string(),
+    SVG: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Capitalize each word in the name
+    const trimmedName = args.name.trim();
+    const capitalizedName = trimmedName
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+
+    await ctx.db.patch(args.elementId, {
+      name: capitalizedName,
+      SVG: args.SVG.trim(),
+    });
+  },
+});
+
 export const deleteElement = mutation({
   args: {
     elementId: v.id("elements"),
