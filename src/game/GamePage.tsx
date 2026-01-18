@@ -4,8 +4,14 @@ import { useEffect, useState, useCallback } from 'preact/hooks'
 import { api } from '../../convex/_generated/api'
 import { Canvas, type CanvasElement } from './Canvas'
 import { ElementCollection } from './ElementCollection'
+import { NewElementDisplay } from './NewElementDisplay'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
+
+type NewElement = {
+  name: string
+  SVG: string
+}
 
 let nextCanvasElementId = 0
 
@@ -15,6 +21,7 @@ export function GamePage() {
   const unlockInitialElements = useMutation(api.game.unlockInitialElements)
   const combineAction = useAction(api.game.combine)
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([])
+  const [newElementToShow, setNewElementToShow] = useState<NewElement | null>(null)
 
   useRunAfterSignIn(() => {
     unlockInitialElements()
@@ -79,6 +86,15 @@ export function GamePage() {
             }
             return [...filtered, newElement]
           })
+
+          // Show new element display if this is a newly discovered element
+          if (result.new) {
+            setNewElementToShow({
+              name: result.element.name,
+              SVG: result.element.SVG,
+            })
+          }
+
           return true
         }
         // If result is null, no valid recipe - leave elements on canvas
@@ -116,6 +132,12 @@ export function GamePage() {
         onCombine={handleCombine}
       />
       <ElementCollection />
+      {newElementToShow && (
+        <NewElementDisplay
+          element={newElementToShow}
+          onDismiss={() => setNewElementToShow(null)}
+        />
+      )}
     </div>
   )
 }
