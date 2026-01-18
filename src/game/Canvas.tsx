@@ -13,7 +13,7 @@ type CanvasProps = {
   onAddElement: (element: Doc<'elements'>, x: number, y: number) => void
   onMoveElement: (id: string, x: number, y: number) => void
   onRemoveElement: (id: string) => void
-  onCombine: (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string, canvasId2: string | null) => void
+  onCombine: (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null) => Promise<boolean>
 }
 
 const ELEMENT_SIZE = 64
@@ -21,6 +21,7 @@ const ELEMENT_SIZE = 64
 export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onCombine }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null)
+  const [shakingElementId, setShakingElementId] = useState<string | null>(null)
   const dragOffset = useRef({ x: 0, y: 0 })
 
   const findElementAtPosition = (x: number, y: number, excludeId?: string): CanvasElement | null => {
@@ -45,7 +46,12 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
     }
   }
 
-  const handleDrop = (e: DragEvent) => {
+  const triggerShake = (elementId: string) => {
+    setShakingElementId(elementId)
+    setTimeout(() => setShakingElementId(null), 500)
+  }
+
+  const handleDrop = async (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     if (!canvasRef.current || !e.dataTransfer) return
@@ -62,12 +68,19 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
 
       if (targetElement && draggedElement) {
         // Dropped on another element - combine them
-        onCombine(
+        const success = await onCombine(
           draggedElement.element._id,
           targetElement.element._id,
           draggedElement.id,
           targetElement.id
         )
+        if (!success) {
+          // Move the dragged element to the drop position and shake it
+          const x = dropX - dragOffset.current.x
+          const y = dropY - dragOffset.current.y
+          onMoveElement(canvasElementId, x, y)
+          triggerShake(canvasElementId)
+        }
       } else {
         // Just moving the element
         const x = dropX - dragOffset.current.x
@@ -83,12 +96,15 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
 
         if (targetElement) {
           // Dropped on an existing element - combine them
-          onCombine(
+          const success = await onCombine(
             element._id,
             targetElement.element._id,
-            null as any, // No canvas ID for element from collection
+            null,
             targetElement.id
           )
+          if (!success) {
+            triggerShake(targetElement.id)
+          }
         } else {
           // Just adding to canvas
           const x = dropX - 32 // Center the 64px element
@@ -148,12 +164,23 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+          20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+        .shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
       {elements.map((canvasElement) => {
         const isDragging = canvasElement.id === draggingElementId
+        const isShaking = canvasElement.id === shakingElementId
         return (
           <div
             key={canvasElement.id}
-            class="absolute w-16 h-16 flex flex-col items-center cursor-grab active:cursor-grabbing select-none"
+            class={`absolute w-16 h-16 flex flex-col items-center cursor-grab active:cursor-grabbing select-none ${isShaking ? 'shake' : ''}`}
             style={{
               left: `${canvasElement.x}px`,
               top: `${canvasElement.y}px`,

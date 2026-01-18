@@ -48,7 +48,7 @@ export function GamePage() {
   }, [])
 
   const handleCombine = useCallback(
-    async (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null) => {
+    async (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null): Promise<boolean> => {
       try {
         const result = await combineAction({
           element1: element1Id,
@@ -71,10 +71,13 @@ export function GamePage() {
             }
             return [...filtered, newElement]
           })
+          return true
         }
         // If result is null, no valid recipe - leave elements on canvas
+        return false
       } catch (error) {
         console.error('Failed to combine elements:', error)
+        return false
       }
     },
     [combineAction, canvasElements]
