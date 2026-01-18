@@ -168,7 +168,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
   return (
     <div
       ref={canvasRef}
-      class="flex-1 bg-gray-200 relative overflow-hidden"
+      class="flex-1 bg-red-900 relative overflow-hidden"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
