@@ -8,7 +8,9 @@ export default defineSchema({
     name: v.string(),
     SVG: v.string(),
     discoveredBy: v.optional(v.id("users")),
-  }).index("by_name", ["name"]),
+  })
+    .index("by_name", ["name"])
+    .index("by_discoveredBy", ["discoveredBy"]),
   recipes: defineTable({
     ingredient1: v.id("elements"),
     ingredient2: v.id("elements"),

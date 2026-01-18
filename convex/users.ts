@@ -79,5 +79,17 @@ export const linkAccount = mutation({
       // Remove from anonymous account
       await ctx.db.delete(unlocked._id);
     }
+
+    // Transfer discoveredBy attribution from anonymous to current user
+    const discoveredElements = await ctx.db
+      .query("elements")
+      .withIndex("by_discoveredBy", (q) => q.eq("discoveredBy", args.anonymousUserId))
+      .collect();
+
+    for (const element of discoveredElements) {
+      await ctx.db.patch(element._id, {
+        discoveredBy: currentUserId,
+      });
+    }
   },
 });
