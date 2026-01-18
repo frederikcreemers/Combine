@@ -1,6 +1,28 @@
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 
+export async function generateRecipe(
+  ingredient1Name: string,
+  ingredient2Name: string,
+  recipeExamples: string
+): Promise<string> {
+  const prompt = `You are a recipe generator for a game where elements can be combined.
+
+Existing recipes (examples):
+${recipeExamples || "None yet"}
+
+Given two elements to combine: "${ingredient1Name}" and "${ingredient2Name}"
+
+Determine what the result should be. You can:
+1. Reuse an existing element name if it makes sense (based on the examples above)
+2. Create a new element name if needed
+3. Respond with "NO RESULT" if these elements should not be combinable
+
+IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing else. No explanations, no markdown, just the name.`;
+
+  return await callOpenRouter(prompt);
+}
+
 async function callOpenRouter(prompt: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {

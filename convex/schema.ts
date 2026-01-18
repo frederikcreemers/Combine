@@ -5,7 +5,7 @@ export default defineSchema({
   elements: defineTable({
     name: v.string(),
     SVG: v.string(),
-  }),
+  }).index("by_name", ["name"]),
   recipes: defineTable({
     ingredient1: v.id("elements"),
     ingredient2: v.id("elements"),

@@ -6,11 +6,12 @@ import type { Id } from '../../convex/_generated/dataModel'
 export function AddRecipeForm() {
   const [ingredient1, setIngredient1] = useState<Id<'elements'> | ''>('')
   const [ingredient2, setIngredient2] = useState<Id<'elements'> | ''>('')
-  const [result, setResult] = useState<Id<'elements'> | 'NEW_ELEMENT'>('')
+  const [result, setResult] = useState<Id<'elements'> | 'NEW_ELEMENT' | 'GENERATE'>('')
   const [newElementName, setNewElementName] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const addRecipe = useMutation(api.recipes.addRecipe)
   const addElement = useAction(api.elements.addElement)
+  const generateRecipe = useAction(api.recipes.generateRecipe)
   const elements = useQuery(api.elements.listElements)
 
   const handleSubmit = async (e: Event) => {
@@ -26,24 +27,35 @@ export function AddRecipeForm() {
     }
     setIsLoading(true)
     try {
-      let resultElementId: Id<'elements'>
-      
-      if (result === 'NEW_ELEMENT') {
-        // Create new element first
-        const newElement = await addElement({
-          name: newElementName.trim(),
-          SVG: '',
+      if (result === 'GENERATE') {
+        // Use AI to generate the recipe
+        const generatedResult = await generateRecipe({
+          element1: ingredient1 as Id<'elements'>,
+          element2: ingredient2 as Id<'elements'>,
         })
-        resultElementId = newElement.id as Id<'elements'>
+        if (generatedResult === null) {
+          alert('The AI determined these elements cannot be combined.')
+        }
       } else {
-        resultElementId = result as Id<'elements'>
-      }
+        let resultElementId: Id<'elements'>
+        
+        if (result === 'NEW_ELEMENT') {
+          // Create new element first
+          const newElement = await addElement({
+            name: newElementName.trim(),
+            SVG: '',
+          })
+          resultElementId = newElement.id as Id<'elements'>
+        } else {
+          resultElementId = result as Id<'elements'>
+        }
 
-      await addRecipe({
-        ingredient1: ingredient1 as Id<'elements'>,
-        ingredient2: ingredient2 as Id<'elements'>,
-        result: resultElementId,
-      })
+        await addRecipe({
+          ingredient1: ingredient1 as Id<'elements'>,
+          ingredient2: ingredient2 as Id<'elements'>,
+          result: resultElementId,
+        })
+      }
       setIngredient1('')
       setIngredient2('')
       setResult('')
@@ -110,11 +122,12 @@ export function AddRecipeForm() {
             value={result}
             onChange={(e) => {
               const value = (e.target as HTMLSelectElement).value
-              setResult(value as Id<'elements'> | 'NEW_ELEMENT')
+              setResult(value as Id<'elements'> | 'NEW_ELEMENT' | 'GENERATE')
             }}
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="">Select an element</option>
+            <option value="GENERATE">GENERATE</option>
             <option value="NEW_ELEMENT">NEW ELEMENT</option>
             {elements.map((element) => (
               <option key={element._id} value={element._id}>
@@ -149,7 +162,7 @@ export function AddRecipeForm() {
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           )}
-          {isLoading ? 'Adding...' : 'Add Recipe'}
+          {isLoading ? (result === 'GENERATE' ? 'Generating...' : 'Adding...') : (result === 'GENERATE' ? 'Generate Recipe' : 'Add Recipe')}
         </button>
       </div>
     </form>

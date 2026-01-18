@@ -78,12 +78,33 @@ export const getElement = internalQuery({
   },
 });
 
-export const getElementPublic = query({
+export const getElementPublic = internalQuery({
   args: {
     elementId: v.id("elements"),
   },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.elementId);
+  },
+});
+
+export const getElementPublicQuery = query({
+  args: {
+    elementId: v.id("elements"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.elementId);
+  },
+});
+
+export const getElementByName = internalQuery({
+  args: {
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("elements")
+      .withIndex("by_name", (q) => q.eq("name", args.name))
+      .first();
   },
 });
 

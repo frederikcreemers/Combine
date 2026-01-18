@@ -16,7 +16,7 @@ export function ElementPage({ id }: ElementPageProps) {
   const [editSVG, setEditSVG] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const element = useQuery(api.elements.getElementPublic, { elementId });
+  const element = useQuery(api.elements.getElementPublicQuery, { elementId });
   const recipesForElement = useQuery(api.recipes.getRecipesForElement, { elementId });
   const recipesUsingElement = useQuery(api.recipes.getRecipesUsingElement, { elementId });
   const allElements = useQuery(api.elements.listElements);
