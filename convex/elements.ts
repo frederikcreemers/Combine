@@ -69,12 +69,33 @@ export const findByName = internalQuery({
   },
 });
 
-export const getElement = query({
+export const getElement = internalQuery({
   args: {
     elementId: v.id("elements"),
   },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.elementId);
+  },
+});
+
+export const getElementPublic = query({
+  args: {
+    elementId: v.id("elements"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.elementId);
+  },
+});
+
+export const updateElementSVG = internalMutation({
+  args: {
+    elementId: v.id("elements"),
+    SVG: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.elementId, {
+      SVG: args.SVG.trim(),
+    });
   },
 });
 
@@ -103,6 +124,38 @@ export const updateElement = mutation({
       name: capitalizedName,
       SVG: args.SVG.trim(),
     });
+  },
+});
+
+export const regenerateSVG = action({
+  args: {
+    elementId: v.id("elements"),
+    feedback: v.string(),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    // Get the element
+    const element = await ctx.runQuery(internal.elements.getElement, {
+      elementId: args.elementId,
+    });
+
+    if (!element) {
+      throw new Error("Element not found");
+    }
+
+    // Generate new SVG with feedback
+    const newSVG: string = await ctx.runAction(internal.ai.regenerateSVG, {
+      elementName: element.name,
+      oldSVG: element.SVG,
+      feedback: args.feedback,
+    });
+
+    // Update the element with the new SVG
+    await ctx.runMutation(internal.elements.updateElementSVG, {
+      elementId: args.elementId,
+      SVG: newSVG,
+    });
+
+    return newSVG;
   },
 });
 

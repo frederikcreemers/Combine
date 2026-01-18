@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useLocation } from "preact-iso/router";
@@ -16,12 +16,17 @@ export function ElementPage({ id }: ElementPageProps) {
   const [editSVG, setEditSVG] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const element = useQuery(api.elements.getElement, { elementId });
+  const element = useQuery(api.elements.getElementPublic, { elementId });
   const recipesForElement = useQuery(api.recipes.getRecipesForElement, { elementId });
   const recipesUsingElement = useQuery(api.recipes.getRecipesUsingElement, { elementId });
   const allElements = useQuery(api.elements.listElements);
   const deleteElement = useMutation(api.elements.deleteElement);
   const updateElement = useMutation(api.elements.updateElement);
+  const regenerateSVG = useAction(api.elements.regenerateSVG);
+  
+  const [showRegenerateForm, setShowRegenerateForm] = useState(false);
+  const [regenerateFeedback, setRegenerateFeedback] = useState("");
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const handleDelete = async () => {
     const confirmed = confirm(
@@ -77,6 +82,30 @@ export function ElementPage({ id }: ElementPageProps) {
     }
   };
 
+  const handleRegenerateSVG = async (e: Event) => {
+    e.preventDefault();
+    if (!regenerateFeedback.trim()) {
+      alert("Please provide feedback for regeneration");
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      await regenerateSVG({
+        elementId,
+        feedback: regenerateFeedback.trim(),
+      });
+      setShowRegenerateForm(false);
+      setRegenerateFeedback("");
+    } catch (error) {
+      console.error("Failed to regenerate SVG:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to regenerate SVG. Please try again.";
+      alert(errorMessage);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
   if (element === undefined || recipesForElement === undefined || recipesUsingElement === undefined || allElements === undefined) {
     return <div>Loading...</div>;
   }
@@ -92,33 +121,80 @@ export function ElementPage({ id }: ElementPageProps) {
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
           {!isEditing ? (
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-6">
-                <div class="w-32 h-32 border-2 border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                  <div
-                    dangerouslySetInnerHTML={{ __html: element.SVG }}
-                    class="w-full h-full flex items-center justify-center"
-                  />
+            <>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-6">
+                  <div class="w-32 h-32 border-2 border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
+                    <div
+                      dangerouslySetInnerHTML={{ __html: element.SVG }}
+                      class="w-full h-full flex items-center justify-center"
+                    />
+                  </div>
+                  <div>
+                    <h1 class="text-4xl font-bold text-gray-900 mb-2">{element.name}</h1>
+                  </div>
                 </div>
-                <div>
-                  <h1 class="text-4xl font-bold text-gray-900 mb-2">{element.name}</h1>
+                <div class="flex gap-2">
+                  <button
+                    onClick={handleEdit}
+                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setShowRegenerateForm(!showRegenerateForm)}
+                    class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
+                  >
+                    Regenerate SVG
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+                  >
+                    Delete Element
+                  </button>
                 </div>
               </div>
-              <div class="flex gap-2">
-                <button
-                  onClick={handleEdit}
-                  class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={handleDelete}
-                  class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
-                >
-                  Delete Element
-                </button>
-              </div>
-            </div>
+              {showRegenerateForm && (
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                  <form onSubmit={handleRegenerateSVG} class="space-y-4">
+                    <div>
+                      <label for="regenerate-feedback" class="block text-sm font-medium text-gray-700 mb-1">
+                        Feedback for SVG Regeneration
+                      </label>
+                      <textarea
+                        id="regenerate-feedback"
+                        value={regenerateFeedback}
+                        onInput={(e) => setRegenerateFeedback((e.target as HTMLTextAreaElement).value)}
+                        rows={3}
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        placeholder="Enter feedback on how to improve the SVG (e.g., 'make it more colorful', 'add more details', 'simplify the design')"
+                      />
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={isRegenerating}
+                        class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isRegenerating ? "Regenerating..." : "Regenerate"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRegenerateForm(false);
+                          setRegenerateFeedback("");
+                        }}
+                        disabled={isRegenerating}
+                        class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </>
           ) : (
             <form onSubmit={handleSaveEdit} class="space-y-4">
               <div class="flex items-start gap-6">
