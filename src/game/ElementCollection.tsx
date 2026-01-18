@@ -1,5 +1,5 @@
 import { useQuery } from 'convex/react'
-import { useState, useMemo } from 'preact/hooks'
+import { useState, useMemo, useEffect, useRef } from 'preact/hooks'
 import Fuse from 'fuse.js'
 import { api } from '../../convex/_generated/api'
 import type { Doc } from '../../convex/_generated/dataModel'
@@ -11,6 +11,31 @@ type ElementCollectionProps = {
 export function ElementCollection({ onDragStart }: ElementCollectionProps) {
   const unlockedElements = useQuery(api.game.listUnlockedElements)
   const [searchQuery, setSearchQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in another input/textarea
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        // Handle Escape in the search input
+        if (e.key === 'Escape' && target === searchInputRef.current) {
+          setSearchQuery('')
+          searchInputRef.current?.blur()
+        }
+        return
+      }
+
+      // Focus search and type the letter if it's a single letter key
+      if (e.key.length === 1 && /[a-zA-Z]/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        searchInputRef.current?.focus()
+        // The letter will be typed naturally since we focused the input
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const fuse = useMemo(() => {
     if (!unlockedElements) return null
@@ -96,10 +121,17 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
       </div>
       <div class="p-4 pt-2 border-t border-gray-200">
         <input
+          ref={searchInputRef}
           type="text"
           placeholder={`Search ${unlockedElements.length} elements...`}
           value={searchQuery}
           onInput={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setSearchQuery('')
+              searchInputRef.current?.blur()
+            }
+          }}
           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
