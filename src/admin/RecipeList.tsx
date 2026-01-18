@@ -1,9 +1,25 @@
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 export function RecipeList() {
   const recipes = useQuery(api.recipes.listRecipes);
   const elements = useQuery(api.elements.listElements);
+  const deleteRecipe = useMutation(api.recipes.deleteRecipe);
+
+  const handleDelete = async (recipeId: Id<"recipes">, ingredient1Name: string, ingredient2Name: string, resultName: string) => {
+    const confirmed = confirm(
+      `Are you sure you want to delete the recipe "${ingredient1Name} + ${ingredient2Name} = ${resultName}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteRecipe({ recipeId });
+    } catch (error) {
+      console.error("Failed to delete recipe:", error);
+      alert("Failed to delete recipe. Please try again.");
+    }
+  };
 
   if (recipes === undefined || elements === undefined) {
     return <div>Loading...</div>;
@@ -65,6 +81,16 @@ export function RecipeList() {
                 />
               </div>
               <div class="text-sm font-semibold text-gray-900">{result.name}</div>
+            </div>
+
+            {/* Delete button */}
+            <div class="ml-auto">
+              <button
+                onClick={() => handleDelete(recipe._id, ingredient1.name, ingredient2.name, result.name)}
+                class="bg-red-600 text-white px-3 py-1 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors text-sm"
+              >
+                Delete
+              </button>
             </div>
           </div>
         );

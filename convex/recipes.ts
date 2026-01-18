@@ -81,3 +81,12 @@ export const addRecipe = mutation({
     return recipeId;
   },
 });
+
+export const deleteRecipe = mutation({
+  args: {
+    recipeId: v.id("recipes"),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.recipeId);
+  },
+});
