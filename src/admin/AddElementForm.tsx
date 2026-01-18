@@ -1,15 +1,15 @@
 import { useState } from 'preact/hooks'
-import { useMutation } from 'convex/react'
+import { useAction } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 
 export function AddElementForm() {
   const [name, setName] = useState('')
   const [svg, setSvg] = useState('')
-  const addElement = useMutation(api.elements.addElement)
+  const addElement = useAction(api.elements.addElement)
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault()
-    if (!name.trim() || !svg.trim()) {
+    if (!name.trim()) {
       return
     }
     try {
