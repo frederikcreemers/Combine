@@ -54,7 +54,10 @@ IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing els
   return "NO RESULT";
 }
 
-async function callOpenRouter(prompt: string): Promise<string> {
+const MODEL_RECIPE = "openai/gpt-5.2";
+const MODEL_SVG = "google/gemini-3-flash-preview";
+
+async function callOpenRouter(prompt: string, model: string = MODEL_RECIPE): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY environment variable is not set");
@@ -67,7 +70,7 @@ async function callOpenRouter(prompt: string): Promise<string> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-pro",
+      model,
       messages: [
         {
           role: "user",
@@ -117,7 +120,7 @@ export const generateSVG = internalAction({
   handler: async (ctx, args) => {
     const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(prompt);
+    const content = await callOpenRouter(prompt, MODEL_SVG);
     return extractSVG(content);
   },
 });
@@ -137,7 +140,7 @@ User feedback: ${args.feedback}
 
 Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(prompt);
+    const content = await callOpenRouter(prompt, MODEL_SVG);
     return extractSVG(content);
   },
 });
