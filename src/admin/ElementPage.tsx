@@ -1,6 +1,7 @@
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { useLocation } from "preact-iso/router";
 
 interface ElementPageProps {
   id: string;
@@ -8,11 +9,28 @@ interface ElementPageProps {
 
 export function ElementPage({ id }: ElementPageProps) {
   const elementId = id as Id<"elements">;
+  const location = useLocation();
   
   const element = useQuery(api.elements.getElement, { elementId });
   const recipesForElement = useQuery(api.recipes.getRecipesForElement, { elementId });
   const recipesUsingElement = useQuery(api.recipes.getRecipesUsingElement, { elementId });
   const allElements = useQuery(api.elements.listElements);
+  const deleteElement = useMutation(api.elements.deleteElement);
+
+  const handleDelete = async () => {
+    const confirmed = confirm(
+      `Are you sure you want to delete "${element?.name}"? This will also delete all recipes that use this element. This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteElement({ elementId });
+      location.route("/admin");
+    } catch (error) {
+      console.error("Failed to delete element:", error);
+      alert("Failed to delete element. Please try again.");
+    }
+  };
 
   if (element === undefined || recipesForElement === undefined || recipesUsingElement === undefined || allElements === undefined) {
     return <div>Loading...</div>;
@@ -28,16 +46,24 @@ export function ElementPage({ id }: ElementPageProps) {
     <div class="min-h-screen bg-gray-50 py-8">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div class="flex items-center gap-6">
-            <div class="w-32 h-32 border-2 border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-              <div
-                dangerouslySetInnerHTML={{ __html: element.SVG }}
-                class="w-full h-full flex items-center justify-center"
-              />
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-6">
+              <div class="w-32 h-32 border-2 border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
+                <div
+                  dangerouslySetInnerHTML={{ __html: element.SVG }}
+                  class="w-full h-full flex items-center justify-center"
+                />
+              </div>
+              <div>
+                <h1 class="text-4xl font-bold text-gray-900 mb-2">{element.name}</h1>
+              </div>
             </div>
-            <div>
-              <h1 class="text-4xl font-bold text-gray-900 mb-2">{element.name}</h1>
-            </div>
+            <button
+              onClick={handleDelete}
+              class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors"
+            >
+              Delete Element
+            </button>
           </div>
         </div>
 
