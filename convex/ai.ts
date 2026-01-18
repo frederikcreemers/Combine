@@ -10,6 +10,9 @@ export function capitalizeElementName(name: string): string {
     .join(" ");
 }
 
+const MAX_ELEMENT_NAME_LENGTH = 30;
+const MAX_GENERATION_RETRIES = 3;
+
 export async function generateRecipe(
   ingredient1Name: string,
   ingredient2Name: string,
@@ -27,9 +30,28 @@ Determine what the result should be. You can:
 2. Create a new element name if needed
 3. Respond with "NO RESULT" if these elements should not be combinable
 
-IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing else. No explanations, no markdown, just the name.`;
+IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing else. No explanations, no markdown, just the name. Keep the name short (under ${MAX_ELEMENT_NAME_LENGTH} characters).`;
 
-  return await callOpenRouter(prompt);
+  for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
+    const result = await callOpenRouter(prompt);
+    const trimmed = result.trim();
+    
+    // Accept "NO RESULT" regardless of length
+    if (trimmed.toUpperCase() === "NO RESULT") {
+      return trimmed;
+    }
+    
+    // Retry if the result is too long
+    if (trimmed.length <= MAX_ELEMENT_NAME_LENGTH) {
+      return trimmed;
+    }
+    
+    console.log(`Generated name too long (${trimmed.length} chars): "${trimmed}", retrying...`);
+  }
+  
+  // After max retries, return "NO RESULT" as a fallback
+  console.log(`Failed to generate short name after ${MAX_GENERATION_RETRIES} attempts`);
+  return "NO RESULT";
 }
 
 async function callOpenRouter(prompt: string): Promise<string> {
