@@ -34,6 +34,8 @@ export const listUnlockedElements = query({
   },
 });
 
+const INITIAL_ELEMENT_NAMES = ["Earth", "Air", "Water", "Fire", "Time"];
+
 export const unlockInitialElements = mutation({
   args: {},
   handler: async (ctx) => {
@@ -53,9 +55,7 @@ export const unlockInitialElements = mutation({
     }
 
     // Find initial elements by name
-    const initialElementNames = ["Earth", "Air", "Water", "Fire", "Time"];
-
-    for (const name of initialElementNames) {
+    for (const name of INITIAL_ELEMENT_NAMES) {
       const element = await ctx.db
         .query("elements")
         .withIndex("by_name", (q) => q.eq("name", name))
@@ -66,6 +66,41 @@ export const unlockInitialElements = mutation({
           elementId: element._id,
           userId,
         });
+      }
+    }
+  },
+});
+
+export const clearProgress = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("User is not authenticated");
+    }
+
+    // Get IDs of initial elements to keep
+    const initialElementIds = new Set<Id<"elements">>();
+    for (const name of INITIAL_ELEMENT_NAMES) {
+      const element = await ctx.db
+        .query("elements")
+        .withIndex("by_name", (q) => q.eq("name", name))
+        .first();
+      if (element) {
+        initialElementIds.add(element._id);
+      }
+    }
+
+    // Get all unlocked elements for this user
+    const unlockedElements = await ctx.db
+      .query("unlockedElements")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    // Delete all except initial elements
+    for (const unlocked of unlockedElements) {
+      if (!initialElementIds.has(unlocked.elementId)) {
+        await ctx.db.delete(unlocked._id);
       }
     }
   },

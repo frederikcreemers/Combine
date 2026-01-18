@@ -6,6 +6,7 @@ import { Canvas, type CanvasElement } from './Canvas'
 import { ElementCollection } from './ElementCollection'
 import { NewElementDisplay } from './NewElementDisplay'
 import { Toolbar } from './Toolbar'
+import { AccountModal } from './AccountModal'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
 import type { Doc, Id } from '../../convex/_generated/dataModel'
 
@@ -25,6 +26,7 @@ export function GamePage() {
   const combineAction = useAction(api.game.combine)
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([])
   const [newElementToShow, setNewElementToShow] = useState<NewElement | null>(null)
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
 
   useRunAfterSignIn(() => {
     unlockInitialElements()
@@ -132,7 +134,10 @@ export function GamePage() {
 
   return (
     <div class="h-screen flex">
-      <Toolbar onClearCanvas={handleClearCanvas} />
+      <Toolbar
+        onClearCanvas={handleClearCanvas}
+        onAccountClick={() => setIsAccountModalOpen(true)}
+      />
       <Canvas
         elements={canvasElements}
         onAddElement={handleAddElement}
@@ -150,6 +155,10 @@ export function GamePage() {
           onDismiss={() => setNewElementToShow(null)}
         />
       )}
+      <AccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+      />
     </div>
   )
 }
