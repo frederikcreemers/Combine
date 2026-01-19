@@ -220,6 +220,9 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
           animation: swirl-fade-in 0.3s ease-out forwards, swirl 1.5s linear 0.3s infinite;
         }
       `}</style>
+      {elements.length === 0 && <div class="absolute top-3 right-3 pointer-events-none text-orange-400 text-sm">
+        Drag elements onto the canvas to combine them
+      </div>}
       {elements.map((canvasElement) => {
         const isDragging = canvasElement.id === draggingElementId
         const isCombining = canvasElement.id === combiningElementId
