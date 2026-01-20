@@ -59,7 +59,7 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
   
   ${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
 
-  Suggest 10 new recipes that would be fun to add to this game.
+  Suggest 50 new recipes that would be fun to add to this game.
   - The recipes should use a unique pair of ingredients (order does not matter) so they don't match an existing pair.
   - Focus first on combining missing recipes that players are likely to try out.
   - Whenever suitable, make the result of a recipe an existing element.
