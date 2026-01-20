@@ -4,7 +4,7 @@ import { api, internal } from "./_generated/api";
 import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { suggestRecipes as suggestRecipesAI } from "./ai";
-import { Id } from "./_generated/dataModel";
+import type { Id } from "./_generated/dataModel";
 // Helper to check if user is admin (for use in queries/mutations)
 async function assertAdmin(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx);
