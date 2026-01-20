@@ -3,6 +3,7 @@ import { AddElementForm } from './AddElementForm'
 import { Tabs } from './Tabs'
 import { RecipeList } from './RecipeList'
 import { AddRecipeForm } from './AddRecipeForm'
+import { RecipeSuggester } from './RecipeSuggester'
 
 export function AdminPage() {
   return (
@@ -27,6 +28,7 @@ export function AdminPage() {
               content: (
                 <>
                   <AddRecipeForm />
+                  <RecipeSuggester />
                   <RecipeList />
                 </>
               ),

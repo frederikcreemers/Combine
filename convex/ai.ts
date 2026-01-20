@@ -54,6 +54,38 @@ IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing els
   return "NO RESULT";
 }
 
+export async function suggestRecipes(allRecipes: { ingredient1: string; ingredient2: string; result: string }[]): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
+  const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
+  
+  ${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
+
+  Suggest 10 new recipes that would be fun to add to this game.
+  - The recipes should use a unique pair of ingredients (order does not matter) so they don't match an existing pair.
+  - Focus first on combining missing recipes that players are likely to try out.
+  - Whenever suitable, make the result of a recipe an existing element.
+  - When introducing new elements, prioritize elements being fun to build upon, over being completely logical.
+  - Also consider combinations that might be a little bit whimsical, like sky + cheese = moon
+
+  Reply with only the recipes, one per line, in the format: "ingredient1 + ingredient2 = result"
+  No explanations, no markdown, just the recipes.
+`;
+
+  const result = await callOpenRouter(prompt);
+  return result.split("\n").map((recipeLine) => {
+    if (!recipeLine.includes("+") || !recipeLine.includes("=")) {
+      return null;
+    }
+    const [ingredients, result] = recipeLine.split("=");
+    const [ingredient1, ingredient2] = ingredients.split("+");
+
+    return {
+      ingredient1: ingredient1.trim(),
+      ingredient2: ingredient2.trim(),
+      result: result.trim(),
+    };
+  }).filter((recipe) => recipe !== null);
+}
+
 const MODEL_RECIPE = "openai/gpt-5.2";
 const MODEL_SVG = "google/gemini-3-flash-preview";
 

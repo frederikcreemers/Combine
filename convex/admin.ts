@@ -1,9 +1,10 @@
 import { action, internalQuery, mutation, query } from "./_generated/server";
-import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { ConvexError, v } from "convex/values";
+import { api, internal } from "./_generated/api";
 import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
 import { getAuthUserId } from "@convex-dev/auth/server";
-
+import { suggestRecipes as suggestRecipesAI } from "./ai";
+import { Id } from "./_generated/dataModel";
 // Helper to check if user is admin (for use in queries/mutations)
 async function assertAdmin(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx);
@@ -407,4 +408,58 @@ export const generateRecipe = action({
 
     return resultElementId;
   },
+});
+
+export const suggestRecipes = action({
+  args: {},
+  handler: async (ctx, _args) => {
+    await assertAdminAction(ctx);
+    const allRecipes = await ctx.runQuery(internal.recipes.listAllRecipes)
+    const suggestedRecipes = await suggestRecipesAI(allRecipes);
+    return suggestedRecipes;
+  },
+});
+
+
+
+export const acceptSuggestedRecipe = action({
+  args: {
+    ingredient1: v.string(),
+    ingredient2: v.string(),
+    result: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await assertAdminAction(ctx);
+    const existingElement1 = await ctx.runQuery(internal.elements.getElementByName, {
+      name: args.ingredient1,
+    });
+    const existingElement2 = await ctx.runQuery(internal.elements.getElementByName, {
+      name: args.ingredient2,
+    });
+    const existingResult = await ctx.runQuery(internal.elements.getElementByName, {
+      name: args.result,
+    });
+
+    if (!existingElement1 || !existingElement2) {
+      throw new ConvexError("The ingredients of a new recipe must exist");
+    }
+
+    let resultId: Id<"elements">;
+    if (!existingResult) {
+      const addedElement = await ctx.runAction(api.admin.addElement, {
+        name: args.result,
+        SVG: "",
+      });
+      resultId = addedElement.id as Id<"elements">;
+    } else {
+      resultId = existingResult._id;
+    }
+
+    const recipeId: Id<"recipes"> = await ctx.runMutation(internal.recipes.insertRecipe, {
+      ingredient1: existingElement1._id,
+      ingredient2: existingElement2._id,
+      result: resultId,
+    });
+    return recipeId;
+  }
 });

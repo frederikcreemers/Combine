@@ -94,3 +94,23 @@ export const insertRecipe = internalMutation({
     return recipeId;
   },
 });
+
+export const listAllRecipes = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const recipes = await ctx.db.query("recipes").collect();
+    return await Promise.all(recipes.map(async (recipe) => {
+      const [ingredient1, ingredient2, result] = await Promise.all([
+        ctx.db.get(recipe.ingredient1),
+        ctx.db.get(recipe.ingredient2),
+        ctx.db.get(recipe.result)
+      ]);
+
+      return {
+        ingredient1: ingredient1!.name,
+        ingredient2: ingredient2!.name,
+        result: result!.name,
+      };
+    }));
+  },
+})
