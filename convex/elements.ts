@@ -78,3 +78,11 @@ export const listElements = query({
     return await ctx.db.query("elements").collect();
   },
 });
+
+export const listElementNames = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<string[]> => {
+    const elements = await ctx.db.query("elements").collect();
+    return elements.map((e) => e.name);
+  },
+});

@@ -16,9 +16,17 @@ const MAX_GENERATION_RETRIES = 3;
 export async function generateRecipe(
   ingredient1Name: string,
   ingredient2Name: string,
-  recipeExamples: string
+  recipeExamples: string,
+  existingElements: string[]
 ): Promise<string> {
+  const elementsList = existingElements.length > 0 
+    ? existingElements.join(", ")
+    : "None yet";
+    
   const prompt = `You are a recipe generator for a game where elements can be combined.
+
+All existing elements in the game:
+${elementsList}
 
 Existing recipes (examples):
 ${recipeExamples || "None yet"}
@@ -26,8 +34,8 @@ ${recipeExamples || "None yet"}
 Given two elements to combine: "${ingredient1Name}" and "${ingredient2Name}"
 
 Determine what the result should be. You can:
-1. Reuse an existing element name if it makes sense - especially if that element currently has very few recipes leading to it
-2. Create a new element name if needed - optimize for results that are interesting to build upon further
+1. PREFER reusing an existing element from the list above when it makes sense - this keeps the game cohesive
+2. Create a new element name only if no existing element fits well - optimize for results that are interesting to build upon further
 3. Respond with "NO RESULT" if these elements should not be combinable
 4. Feel free to make the result the same as one of the ingredients. For instance beekeeper + human = beekeeper makes sense, because a human beekeeper is still just a beekeeper.
 5. Also consider whimsical combinations, like sky + cheese = moon.

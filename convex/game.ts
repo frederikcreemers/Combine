@@ -230,7 +230,8 @@ export const discover = internalAction({
       element1: args.element1,
       element2: args.element2,
     });
-    const result = await generateRecipeAI(element1.name, element2.name, recipeExamplesText);
+    const existingElements = await ctx.runQuery(internal.elements.listElementNames, {});
+    const result = await generateRecipeAI(element1.name, element2.name, recipeExamplesText, existingElements);
 
     let resultName = result.trim();
 
