@@ -39,6 +39,7 @@ Determine what the result should be. You can:
 3. Respond with "NO RESULT" if these elements should not be combinable
 4. Feel free to make the result the same as one of the ingredients. For instance beekeeper + human = beekeeper makes sense, because a human beekeeper is still just a beekeeper.
 5. Also consider whimsical combinations, like sky + cheese = moon.
+6. Elements like "Idea" or "Philosophy" can be combined with concrete things to create broad concepts (e.g. burger + philosophy = food), but limit this to a small set of widely applicable concepts rather than creating overly specific abstractions.
 
 IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing else. No explanations, no markdown, just the name. Keep the name short (under ${MAX_ELEMENT_NAME_LENGTH} characters).`;
 
@@ -75,6 +76,7 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
   - Whenever suitable, make the result of a recipe an existing element.
   - When introducing new elements, prioritize elements being fun to build upon, over being completely logical.
   - Also consider combinations that might be a little bit whimsical, like sky + cheese = moon
+  - Elements like "Idea" or "Philosophy" can combine with concrete things to create broad concepts (e.g. burger + philosophy = food), but limit this to a small set of widely applicable concepts.
 
   Reply with only the recipes, one per line, in the format: "ingredient1 + ingredient2 = result"
   No explanations, no markdown, just the recipes.
