@@ -25,20 +25,18 @@ export function OverviewPage() {
         </div>
       </div>
 
-      <section class="mb-8">
-        <h2 class="text-xl font-semibold mb-4">
-          Orphaned Elements
-          {orphanedElements && <span class="text-gray-500 font-normal ml-2">({orphanedElements.length})</span>}
-        </h2>
-        <p class="text-sm text-gray-600 mb-4">
-          Elements with no recipe resulting in them (excluding initial elements).
-        </p>
-        {orphanedElements === undefined ? (
-          <div>Loading...</div>
-        ) : (
+      {orphanedElements && orphanedElements.length > 0 && (
+        <section class="mb-8">
+          <h2 class="text-xl font-semibold mb-4">
+            Orphaned Elements
+            <span class="text-gray-500 font-normal ml-2">({orphanedElements.length})</span>
+          </h2>
+          <p class="text-sm text-gray-600 mb-4">
+            Elements with no recipe resulting in them (excluding initial elements).
+          </p>
           <ElementGrid elements={orphanedElements} emptyMessage="No orphaned elements" />
-        )}
-      </section>
+        </section>
+      )}
 
       <section>
         <h2 class="text-xl font-semibold mb-4">
