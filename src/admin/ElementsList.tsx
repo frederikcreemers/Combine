@@ -9,21 +9,26 @@ export function ElementsList() {
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const sortedElements = useMemo(() => {
+    if (!elements) return [];
+    return [...elements].sort((a, b) => b._creationTime - a._creationTime);
+  }, [elements]);
+
   const fuse = useMemo(() => {
-    if (!elements) return null;
-    return new Fuse(elements, {
+    if (!sortedElements.length) return null;
+    return new Fuse(sortedElements, {
       keys: ["name"],
       threshold: 0.4,
       ignoreLocation: true,
     });
-  }, [elements]);
+  }, [sortedElements]);
 
   const filteredElements = useMemo(() => {
-    if (!elements) return [];
-    if (!searchQuery.trim()) return elements;
-    if (!fuse) return elements;
+    if (!sortedElements.length) return [];
+    if (!searchQuery.trim()) return sortedElements;
+    if (!fuse) return sortedElements;
     return fuse.search(searchQuery).map((result) => result.item);
-  }, [elements, searchQuery, fuse]);
+  }, [sortedElements, searchQuery, fuse]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
