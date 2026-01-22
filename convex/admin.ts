@@ -44,6 +44,23 @@ async function assertAdminAction(ctx: { runQuery: any }) {
 
 // ============== ELEMENT FUNCTIONS ==============
 
+export const getUnusedElements = query({
+  args: {},
+  handler: async (ctx) => {
+    await assertAdmin(ctx);
+    const allElements = await ctx.db.query("elements").collect();
+    const allRecipes = await ctx.db.query("recipes").collect();
+    
+    const usedAsIngredient = new Set<string>();
+    for (const recipe of allRecipes) {
+      usedAsIngredient.add(recipe.ingredient1);
+      usedAsIngredient.add(recipe.ingredient2);
+    }
+    
+    return allElements.filter((element) => !usedAsIngredient.has(element._id));
+  },
+});
+
 export const addElement = action({
   args: {
     name: v.string(),

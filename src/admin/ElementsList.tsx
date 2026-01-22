@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { useState, useMemo, useEffect, useRef } from "preact/hooks";
 import Fuse from "fuse.js";
 import { api } from "../../convex/_generated/api";
+import { ElementGrid } from "./ElementGrid";
 
 export function ElementsList() {
   const elements = useQuery(api.elements.listElements);
@@ -66,23 +67,10 @@ export function ElementsList() {
           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
-      <div class="grid grid-cols-6 gap-4">
-        {filteredElements.map((element) => (
-          <a
-            key={element._id}
-            href={`/admin/elements/${element._id}`}
-            class="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
-          >
-            <div class="w-full aspect-square border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden">
-              <div dangerouslySetInnerHTML={{ __html: element.SVG }} class="w-full h-full flex items-center justify-center" />
-            </div>
-            <div class="mt-2 text-center">{element.name}</div>
-          </a>
-        ))}
-        {filteredElements.length === 0 && searchQuery && (
-          <p class="text-sm text-gray-500 col-span-6 text-center py-4">No elements found</p>
-        )}
-      </div>
+      <ElementGrid 
+        elements={filteredElements} 
+        emptyMessage={searchQuery ? "No elements found" : "No elements"} 
+      />
     </div>
   );
 }
