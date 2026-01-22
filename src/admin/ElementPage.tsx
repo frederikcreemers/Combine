@@ -43,7 +43,7 @@ export function ElementPage({ id }: ElementPageProps) {
 
     try {
       await deleteElement({ elementId });
-      location.route("/admin/elements");
+      location.route("/admin");
     } catch (error) {
       console.error("Failed to delete element:", error);
       alert("Failed to delete element. Please try again.");
