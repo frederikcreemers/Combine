@@ -3,6 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useLocation } from "preact-iso/router";
+import { RecipeItem } from "./RecipeItem";
 
 interface ElementPageProps {
   id: string;
@@ -21,6 +22,7 @@ export function ElementPage({ id }: ElementPageProps) {
   const recipesUsingElement = useQuery(api.admin.getRecipesUsingElement, { elementId });
   const allElements = useQuery(api.elements.listElements);
   const deleteElement = useMutation(api.admin.deleteElement);
+  const deleteRecipe = useMutation(api.admin.deleteRecipe);
   const updateElement = useMutation(api.admin.updateElement);
   const regenerateSVG = useAction(api.admin.regenerateSVG);
   
@@ -36,10 +38,24 @@ export function ElementPage({ id }: ElementPageProps) {
 
     try {
       await deleteElement({ elementId });
-      location.route("/admin");
+      location.route("/admin/elements");
     } catch (error) {
       console.error("Failed to delete element:", error);
       alert("Failed to delete element. Please try again.");
+    }
+  };
+
+  const handleDeleteRecipe = async (recipeId: Id<"recipes">, ingredient1Name: string, ingredient2Name: string, resultName: string) => {
+    const confirmed = confirm(
+      `Are you sure you want to delete the recipe "${ingredient1Name} + ${ingredient2Name} = ${resultName}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteRecipe({ recipeId });
+    } catch (error) {
+      console.error("Failed to delete recipe:", error);
+      alert("Failed to delete recipe. Please try again.");
     }
   };
 
@@ -119,6 +135,11 @@ export function ElementPage({ id }: ElementPageProps) {
   return (
     <div class="min-h-screen bg-gray-50 py-8">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="mb-6">
+          <a href="/admin/elements" class="text-blue-600 hover:underline">
+            ← Back to Admin
+          </a>
+        </div>
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
           {!isEditing ? (
             <>
@@ -262,48 +283,15 @@ export function ElementPage({ id }: ElementPageProps) {
               <p class="text-gray-500">No recipes found to create this element.</p>
             ) : (
               <div class="space-y-3">
-                {recipesForElement.map((recipe) => {
-                  const ingredient1 = elementsMap.get(recipe.ingredient1);
-                  const ingredient2 = elementsMap.get(recipe.ingredient2);
-                  if (!ingredient1 || !ingredient2) return null;
-
-                  return (
-                    <div
-                      key={recipe._id}
-                      class="border border-gray-200 rounded-lg p-3 flex items-center gap-2"
-                    >
-                      <div class="flex items-center gap-1">
-                        <div class="w-5 h-5 border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                          <div
-                            dangerouslySetInnerHTML={{ __html: ingredient1.SVG }}
-                            class="w-full h-full flex items-center justify-center"
-                          />
-                        </div>
-                        <span class="text-sm text-gray-700">{ingredient1.name}</span>
-                      </div>
-                      <span class="text-gray-400">+</span>
-                      <div class="flex items-center gap-1">
-                        <div class="w-5 h-5 border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                          <div
-                            dangerouslySetInnerHTML={{ __html: ingredient2.SVG }}
-                            class="w-full h-full flex items-center justify-center"
-                          />
-                        </div>
-                        <span class="text-sm text-gray-700">{ingredient2.name}</span>
-                      </div>
-                      <span class="text-gray-400">=</span>
-                      <div class="flex items-center gap-1">
-                        <div class="w-5 h-5 border-2 border-blue-500 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                          <div
-                            dangerouslySetInnerHTML={{ __html: element.SVG }}
-                            class="w-full h-full flex items-center justify-center"
-                          />
-                        </div>
-                        <span class="text-sm font-semibold text-gray-900">{element.name}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                {recipesForElement.map((recipe) => (
+                  <RecipeItem
+                    key={recipe._id}
+                    recipe={recipe}
+                    elementsMap={elementsMap}
+                    showActions
+                    onDelete={handleDeleteRecipe}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -315,49 +303,15 @@ export function ElementPage({ id }: ElementPageProps) {
               <p class="text-gray-500">This element is not used in any recipes.</p>
             ) : (
               <div class="space-y-3">
-                {recipesUsingElement.map((recipe) => {
-                  const ingredient1 = elementsMap.get(recipe.ingredient1);
-                  const ingredient2 = elementsMap.get(recipe.ingredient2);
-                  const result = elementsMap.get(recipe.result);
-                  if (!ingredient1 || !ingredient2 || !result) return null;
-
-                  return (
-                    <div
-                      key={recipe._id}
-                      class="border border-gray-200 rounded-lg p-3 flex items-center gap-2"
-                    >
-                      <div class="flex items-center gap-1">
-                        <div class="w-5 h-5 border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                          <div
-                            dangerouslySetInnerHTML={{ __html: ingredient1.SVG }}
-                            class="w-full h-full flex items-center justify-center"
-                          />
-                        </div>
-                        <span class="text-sm text-gray-700">{ingredient1.name}</span>
-                      </div>
-                      <span class="text-gray-400">+</span>
-                      <div class="flex items-center gap-1">
-                        <div class="w-5 h-5 border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                          <div
-                            dangerouslySetInnerHTML={{ __html: ingredient2.SVG }}
-                            class="w-full h-full flex items-center justify-center"
-                          />
-                        </div>
-                        <span class="text-sm text-gray-700">{ingredient2.name}</span>
-                      </div>
-                      <span class="text-gray-400">=</span>
-                      <div class="flex items-center gap-1">
-                        <div class="w-5 h-5 border-2 border-blue-500 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                          <div
-                            dangerouslySetInnerHTML={{ __html: result.SVG }}
-                            class="w-full h-full flex items-center justify-center"
-                          />
-                        </div>
-                        <span class="text-sm font-semibold text-gray-900">{result.name}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                {recipesUsingElement.map((recipe) => (
+                  <RecipeItem
+                    key={recipe._id}
+                    recipe={recipe}
+                    elementsMap={elementsMap}
+                    showActions
+                    onDelete={handleDeleteRecipe}
+                  />
+                ))}
               </div>
             )}
           </div>

@@ -44,7 +44,7 @@ export function EditRecipePage({ id }: { id: string }) {
         ingredient2: ingredient2 as Id<'elements'>,
         result: result as Id<'elements'>,
       })
-      location.route('/admin')
+      location.route('/admin/recipes')
     } catch (error) {
       console.error('Failed to update recipe:', error)
       alert('Failed to update recipe. Please try again.')
@@ -68,7 +68,7 @@ export function EditRecipePage({ id }: { id: string }) {
       <div class="min-h-screen bg-gray-100 p-8">
         <div class="max-w-2xl mx-auto">
           <p class="text-red-500">Recipe not found</p>
-          <a href="/admin" class="text-blue-600 hover:underline mt-4 inline-block">
+          <a href="/admin/recipes" class="text-blue-600 hover:underline mt-4 inline-block">
             Back to Admin
           </a>
         </div>
@@ -80,7 +80,7 @@ export function EditRecipePage({ id }: { id: string }) {
     <div class="min-h-screen bg-gray-100 p-8">
       <div class="max-w-2xl mx-auto">
         <div class="mb-6">
-          <a href="/admin" class="text-blue-600 hover:underline">
+          <a href="/admin/recipes" class="text-blue-600 hover:underline">
             ← Back to Admin
           </a>
         </div>
@@ -154,7 +154,7 @@ export function EditRecipePage({ id }: { id: string }) {
               {isLoading ? 'Saving...' : 'Save Changes'}
             </button>
             <a
-              href="/admin"
+              href="/admin/recipes"
               class="flex-1 text-center bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition-colors"
             >
               Cancel
