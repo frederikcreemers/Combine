@@ -1,4 +1,4 @@
-import { action, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
@@ -185,6 +185,53 @@ export const regenerateSVG = action({
     });
 
     return newSVG;
+  },
+});
+
+export const renameElement = action({
+  args: {
+    elementId: v.id("elements"),
+    newName: v.string(),
+  },
+  handler: async (ctx, args): Promise<void> => {
+    await assertAdminAction(ctx);
+    
+    const trimmedName = args.newName.trim();
+    if (!trimmedName) {
+      throw new Error("Name cannot be empty");
+    }
+    
+    // Capitalize each word in the name
+    const capitalizedName = trimmedName
+      .split(/\s+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+
+    // Generate new SVG for the new name
+    const newSVG: string = await ctx.runAction(internal.ai.generateSVG, {
+      elementName: capitalizedName,
+    });
+
+    // Update the element with the new name and SVG
+    await ctx.runMutation(internal.admin.updateElementInternal, {
+      elementId: args.elementId,
+      name: capitalizedName,
+      SVG: newSVG,
+    });
+  },
+});
+
+export const updateElementInternal = internalMutation({
+  args: {
+    elementId: v.id("elements"),
+    name: v.string(),
+    SVG: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.elementId, {
+      name: args.name,
+      SVG: args.SVG,
+    });
   },
 });
 

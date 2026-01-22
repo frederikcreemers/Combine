@@ -29,6 +29,11 @@ export function ElementPage({ id }: ElementPageProps) {
   const [showRegenerateForm, setShowRegenerateForm] = useState(false);
   const [regenerateFeedback, setRegenerateFeedback] = useState("");
   const [isRegenerating, setIsRegenerating] = useState(false);
+  
+  const [showRenameForm, setShowRenameForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [isRenaming, setIsRenaming] = useState(false);
+  const renameElement = useAction(api.admin.renameElement);
 
   const handleDelete = async () => {
     const confirmed = confirm(
@@ -122,6 +127,30 @@ export function ElementPage({ id }: ElementPageProps) {
     }
   };
 
+  const handleRename = async (e: Event) => {
+    e.preventDefault();
+    if (!newName.trim()) {
+      alert("Please enter a new name");
+      return;
+    }
+
+    setIsRenaming(true);
+    try {
+      await renameElement({
+        elementId,
+        newName: newName.trim(),
+      });
+      setShowRenameForm(false);
+      setNewName("");
+    } catch (error) {
+      console.error("Failed to rename element:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to rename element. Please try again.";
+      alert(errorMessage);
+    } finally {
+      setIsRenaming(false);
+    }
+  };
+
   if (element === undefined || recipesForElement === undefined || recipesUsingElement === undefined || allElements === undefined) {
     return <div>Loading...</div>;
   }
@@ -163,7 +192,22 @@ export function ElementPage({ id }: ElementPageProps) {
                     Edit
                   </button>
                   <button
-                    onClick={() => setShowRegenerateForm(!showRegenerateForm)}
+                    onClick={() => {
+                      setShowRenameForm(!showRenameForm);
+                      setShowRegenerateForm(false);
+                      if (!showRenameForm && element) {
+                        setNewName(element.name);
+                      }
+                    }}
+                    class="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-colors"
+                  >
+                    Rename
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowRegenerateForm(!showRegenerateForm);
+                      setShowRenameForm(false);
+                    }}
                     class="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors"
                   >
                     Regenerate SVG
@@ -176,6 +220,48 @@ export function ElementPage({ id }: ElementPageProps) {
                   </button>
                 </div>
               </div>
+              {showRenameForm && (
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                  <form onSubmit={handleRename} class="space-y-4">
+                    <div>
+                      <label for="rename-input" class="block text-sm font-medium text-gray-700 mb-1">
+                        New Name
+                      </label>
+                      <input
+                        id="rename-input"
+                        type="text"
+                        value={newName}
+                        onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                        placeholder="Enter new element name"
+                      />
+                      <p class="mt-1 text-sm text-gray-500">
+                        This will also generate a new SVG for the element.
+                      </p>
+                    </div>
+                    <div class="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={isRenaming}
+                        class="bg-amber-600 text-white px-4 py-2 rounded-md hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isRenaming ? "Renaming..." : "Rename"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRenameForm(false);
+                          setNewName("");
+                        }}
+                        disabled={isRenaming}
+                        class="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
               {showRegenerateForm && (
                 <div class="mt-4 pt-4 border-t border-gray-200">
                   <form onSubmit={handleRegenerateSVG} class="space-y-4">
