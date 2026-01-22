@@ -71,7 +71,7 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
 
   Suggest 50 new recipes that would be fun to add to this game.
   - The recipes should use a unique pair of ingredients (order does not matter) so they don't match an existing pair.
-  - Focus first on combining missing recipes that players are likely to try out.
+  - Focus first on making missing combinations that players are likely to try out.
   - Whenever suitable, make the result of a recipe an existing element.
   - When introducing new elements, prioritize elements being fun to build upon, over being completely logical.
   - Also consider combinations that might be a little bit whimsical, like sky + cheese = moon
