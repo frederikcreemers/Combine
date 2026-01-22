@@ -6,6 +6,7 @@ export function OverviewPage() {
   const elements = useQuery(api.elements.listElements);
   const recipes = useQuery(api.admin.listRecipes);
   const unusedElements = useQuery(api.admin.getUnusedElements);
+  const orphanedElements = useQuery(api.admin.getOrphanedElements);
 
   return (
     <div>
@@ -23,6 +24,21 @@ export function OverviewPage() {
           <div class="text-sm text-gray-500">Recipes</div>
         </div>
       </div>
+
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold mb-4">
+          Orphaned Elements
+          {orphanedElements && <span class="text-gray-500 font-normal ml-2">({orphanedElements.length})</span>}
+        </h2>
+        <p class="text-sm text-gray-600 mb-4">
+          Elements with no recipe resulting in them (excluding initial elements).
+        </p>
+        {orphanedElements === undefined ? (
+          <div>Loading...</div>
+        ) : (
+          <ElementGrid elements={orphanedElements} emptyMessage="No orphaned elements" />
+        )}
+      </section>
 
       <section>
         <h2 class="text-xl font-semibold mb-4">

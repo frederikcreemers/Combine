@@ -61,6 +61,27 @@ export const getUnusedElements = query({
   },
 });
 
+const INITIAL_ELEMENT_NAMES = ["Earth", "Air", "Water", "Fire", "Time"];
+
+export const getOrphanedElements = query({
+  args: {},
+  handler: async (ctx) => {
+    await assertAdmin(ctx);
+    const allElements = await ctx.db.query("elements").collect();
+    const allRecipes = await ctx.db.query("recipes").collect();
+    
+    const hasRecipeResultingIn = new Set<string>();
+    for (const recipe of allRecipes) {
+      hasRecipeResultingIn.add(recipe.result);
+    }
+    
+    return allElements.filter((element) => 
+      !hasRecipeResultingIn.has(element._id) && 
+      !INITIAL_ELEMENT_NAMES.includes(element.name)
+    );
+  },
+});
+
 export const addElement = action({
   args: {
     name: v.string(),
