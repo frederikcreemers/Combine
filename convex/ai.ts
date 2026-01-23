@@ -132,6 +132,30 @@ async function callOpenRouter(prompt: string, model: string = MODEL_RECIPE): Pro
   return data.choices[0]?.message?.content || "";
 }
 
+export function minifySVG(svg: string): string {
+  return svg
+    // Remove XML comments
+    .replace(/<!--[\s\S]*?-->/g, '')
+    // Remove whitespace between tags
+    .replace(/>\s+</g, '><')
+    // Remove leading/trailing whitespace
+    .trim()
+    // Collapse multiple spaces in attributes to single space
+    .replace(/\s{2,}/g, ' ')
+    // Remove space before closing bracket
+    .replace(/\s+>/g, '>')
+    // Remove space before self-closing bracket
+    .replace(/\s+\/>/g, '/>')
+    // Remove unnecessary semicolons in style attributes
+    .replace(/;"/g, '"')
+    // Remove empty style attributes
+    .replace(/\s*style=""\s*/g, ' ')
+    // Remove empty class attributes  
+    .replace(/\s*class=""\s*/g, ' ')
+    // Clean up any double spaces created
+    .replace(/\s{2,}/g, ' ');
+}
+
 function extractSVG(content: string): string {
   let svgContent = content.trim();
 
@@ -154,7 +178,7 @@ function extractSVG(content: string): string {
     throw new Error("Failed to generate valid SVG");
   }
 
-  return svgContent;
+  return minifySVG(svgContent);
 }
 
 export const generateSVG = internalAction({
