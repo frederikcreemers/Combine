@@ -82,7 +82,7 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
   No explanations, no markdown, just the recipes.
 `;
 
-  const result = await callOpenRouter(prompt);
+  const result = await callOpenRouter(prompt, MODEL_OPENAI);
   return result.split("\n").map((recipeLine) => {
     if (!recipeLine.includes("+") || !recipeLine.includes("=")) {
       return null;
@@ -98,10 +98,10 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
   }).filter((recipe) => recipe !== null);
 }
 
-const MODEL_RECIPE = "openai/gpt-5.2";
-const MODEL_SVG = "google/gemini-3-flash-preview";
+const MODEL_GEMINI_FLASH = "google/gemini-3-flash-preview";
+const MODEL_OPENAI = "openai/gpt-5.2";
 
-async function callOpenRouter(prompt: string, model: string = MODEL_RECIPE): Promise<string> {
+async function callOpenRouter(prompt: string, model: string = MODEL_GEMINI_FLASH): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY environment variable is not set");
@@ -188,7 +188,7 @@ export const generateSVG = internalAction({
   handler: async (_ctx, args) => {
     const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(prompt, MODEL_SVG);
+    const content = await callOpenRouter(prompt, MODEL_GEMINI_FLASH);
     return extractSVG(content);
   },
 });
@@ -208,7 +208,7 @@ User feedback: ${args.feedback}
 
 Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(prompt, MODEL_SVG);
+    const content = await callOpenRouter(prompt, MODEL_GEMINI_FLASH);
     return extractSVG(content);
   },
 });
