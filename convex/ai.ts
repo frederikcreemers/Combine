@@ -13,17 +13,18 @@ export function capitalizeElementName(name: string): string {
 const MAX_ELEMENT_NAME_LENGTH = 30;
 const MAX_GENERATION_RETRIES = 3;
 
-export async function generateRecipe(
+function buildRecipePrompt(
   ingredient1Name: string,
   ingredient2Name: string,
   recipeExamples: string,
-  existingElements: string[]
-): Promise<string> {
+  existingElements: string[],
+  withSurpriseCheck: boolean
+): string {
   const elementsList = existingElements.length > 0 
     ? existingElements.join(", ")
     : "None yet";
     
-  const prompt = `You are a recipe generator for a game where elements can be combined.
+  const basePrompt = `You are a recipe generator for a game where elements can be combined.
 
 All existing elements in the game:
 ${elementsList}
@@ -41,11 +42,63 @@ Determine what the result should be. You can:
 5. Also consider whimsical combinations, like sky + cheese = moon.
 6. Elements like "Idea" or "Philosophy" can be combined with concrete things to create broad concepts (e.g. burger + philosophy = food), but limit this to a small set of widely applicable concepts rather than creating overly specific abstractions.
 
-IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing else. No explanations, no markdown, just the name. Keep the name short (under ${MAX_ELEMENT_NAME_LENGTH} characters).`;
+Keep the name short (under ${MAX_ELEMENT_NAME_LENGTH} characters).`;
 
+  if (withSurpriseCheck) {
+    return `${basePrompt}
+
+Reply with JSON in this exact format (no markdown, no explanation):
+{"result": "ElementName", "surprising": true}
+
+- "result" should be the element name or "NO RESULT"
+- "surprising" should be true if this combination is unexpected/creative/whimsical, false if it's obvious/straightforward`;
+  } else {
+    return `${basePrompt}
+
+IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing else. No explanations, no markdown, just the name.`;
+  }
+}
+
+interface GeminiRecipeResponse {
+  result: string;
+  surprising: boolean;
+}
+
+function parseGeminiResponse(response: string): GeminiRecipeResponse | null {
+  try {
+    // Try to extract JSON from the response
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (typeof parsed.result === 'string' && typeof parsed.surprising === 'boolean') {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function generateRecipe(
+  ingredient1Name: string,
+  ingredient2Name: string,
+  recipeExamples: string,
+  existingElements: string[]
+): Promise<string> {
+  // First, try with Gemini Flash to get result + surprise indicator
+  const geminiPrompt = buildRecipePrompt(ingredient1Name, ingredient2Name, recipeExamples, existingElements, true);
+  
   for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
-    const result = await callOpenRouter(prompt);
-    const trimmed = result.trim();
+    const geminiResponse = await callOpenRouter(geminiPrompt, MODEL_GEMINI_FLASH);
+    const parsed = parseGeminiResponse(geminiResponse);
+    
+    if (!parsed) {
+      console.log(`Failed to parse Gemini response, retrying...`);
+      continue;
+    }
+    
+    const trimmed = parsed.result.trim();
     
     // Accept "NO RESULT" regardless of length
     if (trimmed.toUpperCase() === "NO RESULT") {
@@ -53,15 +106,29 @@ IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing els
     }
     
     // Retry if the result is too long
-    if (trimmed.length <= MAX_ELEMENT_NAME_LENGTH) {
-      return trimmed;
+    if (trimmed.length > MAX_ELEMENT_NAME_LENGTH) {
+      console.log(`Generated name too long (${trimmed.length} chars): "${trimmed}", retrying...`);
+      continue;
     }
     
-    console.log(`Generated name too long (${trimmed.length} chars): "${trimmed}", retrying...`);
+    // If surprising, get a second opinion from OpenAI
+    if (parsed.surprising) {
+      console.log(`Gemini found surprising result "${trimmed}" for ${ingredient1Name} + ${ingredient2Name}, consulting OpenAI...`);
+      const openaiPrompt = buildRecipePrompt(ingredient1Name, ingredient2Name, recipeExamples, existingElements, false);
+      const openaiResult = await callOpenRouter(openaiPrompt, MODEL_OPENAI);
+      const openaiTrimmed = openaiResult.trim();
+      
+      if (openaiTrimmed.toUpperCase() !== "NO RESULT" && openaiTrimmed.length <= MAX_ELEMENT_NAME_LENGTH) {
+        console.log(`OpenAI suggested "${openaiTrimmed}" instead`);
+        return openaiTrimmed;
+      }
+    }
+    
+    return trimmed;
   }
   
   // After max retries, return "NO RESULT" as a fallback
-  console.log(`Failed to generate short name after ${MAX_GENERATION_RETRIES} attempts`);
+  console.log(`Failed to generate valid recipe after ${MAX_GENERATION_RETRIES} attempts`);
   return "NO RESULT";
 }
 
