@@ -30,7 +30,7 @@ export function RecipeItem({ recipe, elementsMap, showActions = false, onDelete 
       {/* Ingredient 1 */}
       <div class="flex items-center gap-1">
         <div class="w-5 h-5 border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-          <ElementSvg name={ingredient1.name} svgUrl={ingredient1.svgUrl} legacySvg={ingredient1.SVG} class="w-full h-full" />
+          <ElementSvg name={ingredient1.name} svgUrl={ingredient1.svgUrl} class="w-full h-full" />
         </div>
         <span class="text-sm text-gray-700">{ingredient1.name}</span>
       </div>
@@ -41,7 +41,7 @@ export function RecipeItem({ recipe, elementsMap, showActions = false, onDelete 
       {/* Ingredient 2 */}
       <div class="flex items-center gap-1">
         <div class="w-5 h-5 border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-          <ElementSvg name={ingredient2.name} svgUrl={ingredient2.svgUrl} legacySvg={ingredient2.SVG} class="w-full h-full" />
+          <ElementSvg name={ingredient2.name} svgUrl={ingredient2.svgUrl} class="w-full h-full" />
         </div>
         <span class="text-sm text-gray-700">{ingredient2.name}</span>
       </div>
@@ -52,7 +52,7 @@ export function RecipeItem({ recipe, elementsMap, showActions = false, onDelete 
       {/* Result */}
       <div class="flex items-center gap-1">
         <div class="w-5 h-5 border-2 border-blue-500 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-          <ElementSvg name={result.name} svgUrl={result.svgUrl} legacySvg={result.SVG} class="w-full h-full" />
+          <ElementSvg name={result.name} svgUrl={result.svgUrl} class="w-full h-full" />
         </div>
         <span class="text-sm font-semibold text-gray-900">{result.name}</span>
       </div>

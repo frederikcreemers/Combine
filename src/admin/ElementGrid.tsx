@@ -19,7 +19,6 @@ export function ElementGrid({ elements, emptyMessage = "No elements" }: ElementG
             <ElementSvg
               name={element.name}
               svgUrl={element.svgUrl}
-              legacySvg={element.SVG}
               class="w-full h-full"
             />
           </div>

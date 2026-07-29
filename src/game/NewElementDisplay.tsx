@@ -4,8 +4,7 @@ import { ElementSvg } from '../components/ElementSvg'
 type NewElementDisplayProps = {
   element: {
     name: string
-    svgUrl: string | null
-    SVG?: string
+    svgUrl: string
   }
   recipeDiscovered?: boolean
   elementDiscovered?: boolean
@@ -62,7 +61,7 @@ export function NewElementDisplay({ element, recipeDiscovered, elementDiscovered
       />
       <h1 class="text-4xl font-bold text-white mb-8 relative z-10">New Element!</h1>
       <div class="bg-white border border-gray-400 rounded-lg p-4 flex flex-col items-center relative z-10">
-        <ElementSvg name={element.name} svgUrl={element.svgUrl} legacySvg={element.SVG} class="w-32 h-32" />
+        <ElementSvg name={element.name} svgUrl={element.svgUrl} class="w-32 h-32" />
         <span class="text-xl text-gray-700 mt-2">{element.name}</span>
       </div>
       {elementDiscovered ? (

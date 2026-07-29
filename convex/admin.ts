@@ -1,7 +1,7 @@
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
-import { generateRecipe as generateRecipeAI, capitalizeElementName, minifySVG } from "./ai";
+import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { suggestRecipes as suggestRecipesAI } from "./ai";
 import type { Id } from "./_generated/dataModel";
@@ -245,10 +245,9 @@ export const updateElementInternal = internalMutation({
     }
     await ctx.db.patch(args.elementId, {
       name: args.name,
-      SVG: undefined,
       svgStorageId: args.svgStorageId,
     });
-    if (element.svgStorageId && element.svgStorageId !== args.svgStorageId) {
+    if (element.svgStorageId !== args.svgStorageId) {
       await ctx.storage.delete(element.svgStorageId);
     }
   },
@@ -296,10 +295,10 @@ export const deleteElement = mutation({
 
     // Delete the stored SVG and the element itself
     const element = await ctx.db.get(args.elementId);
-    if (element?.svgStorageId) {
+    if (element) {
       await ctx.storage.delete(element.svgStorageId);
+      await ctx.db.delete(args.elementId);
     }
-    await ctx.db.delete(args.elementId);
   },
 });
 
@@ -572,29 +571,4 @@ export const acceptSuggestedRecipe = action({
     });
     return recipeId;
   }
-});
-
-export const minifyAllElementSVGs = internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    const elements = await ctx.db.query("elements").collect();
-    let updated = 0;
-    let savedBytes = 0;
-    
-    for (const element of elements) {
-      if (!element.SVG) continue;
-      const originalSize = element.SVG.length;
-      const minified = minifySVG(element.SVG);
-      const newSize = minified.length;
-      
-      if (minified !== element.SVG) {
-        await ctx.db.patch(element._id, { SVG: minified });
-        updated++;
-        savedBytes += originalSize - newSize;
-      }
-    }
-    
-    console.log(`Minified ${updated} elements, saved ${savedBytes} bytes`);
-    return { updated, savedBytes, total: elements.length };
-  },
 });

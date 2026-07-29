@@ -18,8 +18,7 @@ import type { ElementView } from '../types'
 
 type NewElement = {
   name: string
-  svgUrl: string | null
-  SVG?: string
+  svgUrl: string
   recipeDiscovered: boolean
   elementDiscovered: boolean
 }
@@ -123,7 +122,6 @@ export function GamePage() {
             setNewElementToShow({
               name: result.element.name,
               svgUrl: result.element.svgUrl,
-              SVG: result.element.SVG,
               recipeDiscovered: result.recipeDiscovered,
               elementDiscovered: result.elementDiscovered,
             })

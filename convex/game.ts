@@ -10,8 +10,7 @@ import { storeSvg, withSvgUrl } from "./elements";
 type ElementResult = {
   _id: Id<"elements">;
   name: string;
-  svgUrl: string | null;
-  SVG?: string;
+  svgUrl: string;
 };
 
 export const listDiscoveredElements = query({
@@ -248,13 +247,14 @@ export const discover = internalAction({
 
     if (existingElement) {
       resultElementId = existingElement._id;
+      const svgUrl = await ctx.storage.getUrl(existingElement.svgStorageId);
+      if (!svgUrl) {
+        throw new Error(`SVG file is missing for element ${existingElement._id}`);
+      }
       resultElement = {
         _id: existingElement._id,
         name: existingElement.name,
-        svgUrl: existingElement.svgStorageId
-          ? await ctx.storage.getUrl(existingElement.svgStorageId)
-          : null,
-        SVG: existingElement.SVG,
+        svgUrl,
       };
     } else {
       // Create new element with discoveredBy set to current user
@@ -267,10 +267,14 @@ export const discover = internalAction({
         svgStorageId,
         discoveredBy: args.userId,
       }) as Id<"elements">;
+      const svgUrl = await ctx.storage.getUrl(svgStorageId);
+      if (!svgUrl) {
+        throw new Error(`Could not resolve stored SVG for element ${resultElementId}`);
+      }
       resultElement = {
         _id: resultElementId,
         name: resultName,
-        svgUrl: await ctx.storage.getUrl(svgStorageId),
+        svgUrl,
       };
       elementDiscovered = true;
     }

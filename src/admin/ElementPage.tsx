@@ -69,11 +69,10 @@ export function ElementPage({ id }: ElementPageProps) {
     if (element) {
       setEditName(element.name);
       try {
-        const svg = (element.SVG ??
-          (element.svgUrl ? await fetch(element.svgUrl).then((response) => {
-            if (!response.ok) throw new Error("Could not load SVG");
-            return response.text();
-          }) : "")) ?? "";
+        const svg = await fetch(element.svgUrl).then((response) => {
+          if (!response.ok) throw new Error("Could not load SVG");
+          return response.text();
+        });
         setEditSVG(svg);
       } catch (error) {
         console.error("Failed to load SVG for editing:", error);
@@ -190,7 +189,6 @@ export function ElementPage({ id }: ElementPageProps) {
                     <ElementSvg
                       name={element.name}
                       svgUrl={element.svgUrl}
-                      legacySvg={element.SVG}
                       class="w-full h-full"
                     />
                   </div>
@@ -323,7 +321,6 @@ export function ElementPage({ id }: ElementPageProps) {
                   <ElementSvg
                     name={element.name}
                     svgUrl={element.svgUrl}
-                    legacySvg={element.SVG}
                     markup={editSVG || undefined}
                     class="w-full h-full"
                   />

@@ -73,15 +73,11 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     
     const svgContainer = document.createElement('div')
     svgContainer.style.cssText = 'width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;'
-    if (element.svgUrl) {
-      const image = document.createElement('img')
-      image.src = element.svgUrl
-      image.alt = ''
-      image.style.cssText = 'width: 100%; height: 100%; object-fit: contain;'
-      svgContainer.appendChild(image)
-    } else {
-      svgContainer.innerHTML = element.SVG ?? ''
-    }
+    const image = document.createElement('img')
+    image.src = element.svgUrl
+    image.alt = ''
+    image.style.cssText = 'width: 100%; height: 100%; object-fit: contain;'
+    svgContainer.appendChild(image)
     
     const nameLabel = document.createElement('span')
     nameLabel.style.cssText = 'font-size: 14px; color: #374151; margin-top: 4px; text-align: center; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;'
@@ -126,7 +122,6 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
               <ElementSvg
                 name={element.name}
                 svgUrl={element.svgUrl}
-                legacySvg={element.SVG}
                 class="w-8 h-8 flex-shrink-0 pointer-events-none"
               />
               <span class="text-sm text-gray-700 truncate pointer-events-none">{element.name}</span>

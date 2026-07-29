@@ -37,7 +37,6 @@ export function DiscoveredItemsModal({ isOpen, onClose }: DiscoveredItemsModalPr
               <ElementSvg
                 name={element.name}
                 svgUrl={element.svgUrl}
-                legacySvg={element.SVG}
                 class="w-12 h-12 mb-2"
               />
               <span class="text-xs text-gray-700 text-center font-medium">

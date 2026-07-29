@@ -1,7 +1,6 @@
 type ElementSvgProps = {
   name: string
-  svgUrl?: string | null
-  legacySvg?: string
+  svgUrl: string
   markup?: string
   class?: string
 }
@@ -9,23 +8,16 @@ type ElementSvgProps = {
 export function ElementSvg({
   name,
   svgUrl,
-  legacySvg,
   markup,
   class: className = '',
 }: ElementSvgProps) {
-  const inlineSvg = markup ?? legacySvg
-
-  if (markup || (!svgUrl && inlineSvg)) {
+  if (markup) {
     return (
       <div
         class={className}
-        dangerouslySetInnerHTML={{ __html: inlineSvg ?? '' }}
+        dangerouslySetInnerHTML={{ __html: markup }}
       />
     )
-  }
-
-  if (!svgUrl) {
-    return <div class={className} aria-label={`${name} image unavailable`} />
   }
 
   return (

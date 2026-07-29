@@ -6,10 +6,7 @@ export default defineSchema({
   ...authTables,
   elements: defineTable({
     name: v.string(),
-    // SVG is temporarily optional while existing rows are migrated to storage.
-    // Remove it after both deployments have been fully migrated.
-    SVG: v.optional(v.string()),
-    svgStorageId: v.optional(v.id("_storage")),
+    svgStorageId: v.id("_storage"),
     discoveredBy: v.optional(v.id("users")),
   })
     .index("by_name", ["name"])

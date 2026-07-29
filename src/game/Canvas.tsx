@@ -246,7 +246,6 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
             <ElementSvg
               name={canvasElement.element.name}
               svgUrl={canvasElement.element.svgUrl}
-              legacySvg={canvasElement.element.SVG}
               class="w-[60px] h-[60px] pointer-events-none flex-shrink-0"
             />
             <span class="text-sm text-gray-700 mt-1 text-center leading-tight line-clamp-2 pointer-events-none">
