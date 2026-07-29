@@ -165,8 +165,8 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
   }).filter((recipe) => recipe !== null);
 }
 
-const MODEL_GEMINI_FLASH = "google/gemini-3-flash-preview";
-const MODEL_OPENAI = "openai/gpt-5.2";
+const MODEL_GEMINI_FLASH = "google/gemini-3.6-flash";
+const MODEL_OPENAI = "openai/gpt-5.6-terra";
 
 async function callOpenRouter(prompt: string, model: string = MODEL_GEMINI_FLASH): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
@@ -182,6 +182,9 @@ async function callOpenRouter(prompt: string, model: string = MODEL_GEMINI_FLASH
     },
     body: JSON.stringify({
       model,
+      ...(model === MODEL_OPENAI
+        ? { reasoning: { effort: "none" } }
+        : {}),
       messages: [
         {
           role: "user",
