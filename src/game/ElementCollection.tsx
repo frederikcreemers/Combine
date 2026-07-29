@@ -2,10 +2,11 @@ import { useQuery } from 'convex/react'
 import { useState, useMemo, useEffect, useRef } from 'preact/hooks'
 import Fuse from 'fuse.js'
 import { api } from '../../convex/_generated/api'
-import type { Doc } from '../../convex/_generated/dataModel'
+import { ElementSvg } from '../components/ElementSvg'
+import type { ElementView } from '../types'
 
 type ElementCollectionProps = {
-  onDragStart?: (element: Doc<'elements'>) => void
+  onDragStart?: (element: ElementView) => void
 }
 
 export function ElementCollection({ onDragStart }: ElementCollectionProps) {
@@ -60,7 +61,7 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     return fuse.search(searchQuery).map((result) => result.item)
   }, [sortedElements, searchQuery, fuse])
 
-  const handleDragStart = (e: DragEvent, element: Doc<'elements'>) => {
+  const handleDragStart = (e: DragEvent, element: ElementView) => {
     if (!e.dataTransfer) return
     
     e.dataTransfer.setData('application/element', JSON.stringify(element))
@@ -72,7 +73,15 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     
     const svgContainer = document.createElement('div')
     svgContainer.style.cssText = 'width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;'
-    svgContainer.innerHTML = element.SVG
+    if (element.svgUrl) {
+      const image = document.createElement('img')
+      image.src = element.svgUrl
+      image.alt = ''
+      image.style.cssText = 'width: 100%; height: 100%; object-fit: contain;'
+      svgContainer.appendChild(image)
+    } else {
+      svgContainer.innerHTML = element.SVG ?? ''
+    }
     
     const nameLabel = document.createElement('span')
     nameLabel.style.cssText = 'font-size: 14px; color: #374151; margin-top: 4px; text-align: center; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;'
@@ -112,11 +121,13 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
               key={element._id}
               class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-grab active:cursor-grabbing select-none"
               draggable
-              onDragStart={(e) => handleDragStart(e, element as Doc<'elements'>)}
+              onDragStart={(e) => handleDragStart(e, element)}
             >
-              <div
+              <ElementSvg
+                name={element.name}
+                svgUrl={element.svgUrl}
+                legacySvg={element.SVG}
                 class="w-8 h-8 flex-shrink-0 pointer-events-none"
-                dangerouslySetInnerHTML={{ __html: element.SVG }}
               />
               <span class="text-sm text-gray-700 truncate pointer-events-none">{element.name}</span>
             </div>

@@ -1,10 +1,6 @@
 import type { Id } from "../../convex/_generated/dataModel";
-
-interface Element {
-  _id: string
-  name: string
-  SVG: string
-}
+import { ElementSvg } from "../components/ElementSvg";
+import type { ElementView } from "../types";
 
 interface Recipe {
   _id: Id<"recipes">
@@ -15,7 +11,7 @@ interface Recipe {
 
 interface RecipeItemProps {
   recipe: Recipe
-  elementsMap: Map<string, Element>
+  elementsMap: Map<string, ElementView>
   showActions?: boolean
   onDelete?: (recipeId: Id<"recipes">, ingredient1Name: string, ingredient2Name: string, resultName: string) => void
 }
@@ -34,10 +30,7 @@ export function RecipeItem({ recipe, elementsMap, showActions = false, onDelete 
       {/* Ingredient 1 */}
       <div class="flex items-center gap-1">
         <div class="w-5 h-5 border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-          <div
-            dangerouslySetInnerHTML={{ __html: ingredient1.SVG }}
-            class="w-full h-full flex items-center justify-center"
-          />
+          <ElementSvg name={ingredient1.name} svgUrl={ingredient1.svgUrl} legacySvg={ingredient1.SVG} class="w-full h-full" />
         </div>
         <span class="text-sm text-gray-700">{ingredient1.name}</span>
       </div>
@@ -48,10 +41,7 @@ export function RecipeItem({ recipe, elementsMap, showActions = false, onDelete 
       {/* Ingredient 2 */}
       <div class="flex items-center gap-1">
         <div class="w-5 h-5 border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-          <div
-            dangerouslySetInnerHTML={{ __html: ingredient2.SVG }}
-            class="w-full h-full flex items-center justify-center"
-          />
+          <ElementSvg name={ingredient2.name} svgUrl={ingredient2.svgUrl} legacySvg={ingredient2.SVG} class="w-full h-full" />
         </div>
         <span class="text-sm text-gray-700">{ingredient2.name}</span>
       </div>
@@ -62,10 +52,7 @@ export function RecipeItem({ recipe, elementsMap, showActions = false, onDelete 
       {/* Result */}
       <div class="flex items-center gap-1">
         <div class="w-5 h-5 border-2 border-blue-500 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-          <div
-            dangerouslySetInnerHTML={{ __html: result.SVG }}
-            class="w-full h-full flex items-center justify-center"
-          />
+          <ElementSvg name={result.name} svgUrl={result.svgUrl} legacySvg={result.SVG} class="w-full h-full" />
         </div>
         <span class="text-sm font-semibold text-gray-900">{result.name}</span>
       </div>

@@ -1,11 +1,8 @@
-interface Element {
-  _id: string
-  name: string
-  SVG: string
-}
+import { ElementSvg } from '../components/ElementSvg'
+import type { ElementView } from '../types'
 
 interface ElementGridProps {
-  elements: Element[]
+  elements: ElementView[]
   emptyMessage?: string
 }
 
@@ -19,7 +16,12 @@ export function ElementGrid({ elements, emptyMessage = "No elements" }: ElementG
           class="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity"
         >
           <div class="w-full aspect-square border border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden">
-            <div dangerouslySetInnerHTML={{ __html: element.SVG }} class="w-full h-full flex items-center justify-center" />
+            <ElementSvg
+              name={element.name}
+              svgUrl={element.svgUrl}
+              legacySvg={element.SVG}
+              class="w-full h-full"
+            />
           </div>
           <div class="mt-2 text-center">{element.name}</div>
         </a>

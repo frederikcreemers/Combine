@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useLocation } from "preact-iso/router";
 import { RecipeItem } from "./RecipeItem";
+import { ElementSvg } from "../components/ElementSvg";
 
 interface ElementPageProps {
   id: string;
@@ -23,7 +24,7 @@ export function ElementPage({ id }: ElementPageProps) {
   const allElements = useQuery(api.elements.listElements);
   const deleteElement = useMutation(api.admin.deleteElement);
   const deleteRecipe = useMutation(api.admin.deleteRecipe);
-  const updateElement = useMutation(api.admin.updateElement);
+  const updateElement = useAction(api.admin.updateElement);
   const regenerateSVG = useAction(api.admin.regenerateSVG);
   
   const [showRegenerateForm, setShowRegenerateForm] = useState(false);
@@ -64,10 +65,21 @@ export function ElementPage({ id }: ElementPageProps) {
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (element) {
       setEditName(element.name);
-      setEditSVG(element.SVG);
+      try {
+        const svg = (element.SVG ??
+          (element.svgUrl ? await fetch(element.svgUrl).then((response) => {
+            if (!response.ok) throw new Error("Could not load SVG");
+            return response.text();
+          }) : "")) ?? "";
+        setEditSVG(svg);
+      } catch (error) {
+        console.error("Failed to load SVG for editing:", error);
+        alert("Failed to load the SVG for editing.");
+        return;
+      }
       setIsEditing(true);
     }
   };
@@ -175,9 +187,11 @@ export function ElementPage({ id }: ElementPageProps) {
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-6">
                   <div class="w-32 h-32 border-2 border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                    <div
-                      dangerouslySetInnerHTML={{ __html: element.SVG }}
-                      class="w-full h-full flex items-center justify-center"
+                    <ElementSvg
+                      name={element.name}
+                      svgUrl={element.svgUrl}
+                      legacySvg={element.SVG}
+                      class="w-full h-full"
                     />
                   </div>
                   <div>
@@ -306,9 +320,12 @@ export function ElementPage({ id }: ElementPageProps) {
             <form onSubmit={handleSaveEdit} class="space-y-4">
               <div class="flex items-start gap-6">
                 <div class="w-32 h-32 border-2 border-gray-300 rounded flex items-center justify-center bg-white overflow-hidden flex-shrink-0">
-                  <div
-                    dangerouslySetInnerHTML={{ __html: editSVG || element.SVG }}
-                    class="w-full h-full flex items-center justify-center"
+                  <ElementSvg
+                    name={element.name}
+                    svgUrl={element.svgUrl}
+                    legacySvg={element.SVG}
+                    markup={editSVG || undefined}
+                    class="w-full h-full"
                   />
                 </div>
                 <div class="flex-1 space-y-4">

@@ -5,6 +5,14 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
 import { rateLimiter } from "./rateLimits";
 import type { Id } from "./_generated/dataModel";
+import { storeSvg, withSvgUrl } from "./elements";
+
+type ElementResult = {
+  _id: Id<"elements">;
+  name: string;
+  svgUrl: string | null;
+  SVG?: string;
+};
 
 export const listDiscoveredElements = query({
   args: {},
@@ -19,11 +27,7 @@ export const listDiscoveredElements = query({
       .withIndex("by_discoveredBy", (q) => q.eq("discoveredBy", userId))
       .collect();
 
-    return elements.map((el) => ({
-      _id: el._id,
-      name: el.name,
-      SVG: el.SVG,
-    }));
+    return await Promise.all(elements.map((element) => withSvgUrl(ctx, element)));
   },
 });
 
@@ -44,11 +48,7 @@ export const listUnlockedElements = query({
       unlockedElements.map(async (unlocked) => {
         const element = await ctx.db.get(unlocked.elementId);
         if (!element) return null;
-        return {
-          _id: element._id,
-          name: element.name,
-          SVG: element.SVG,
-        };
+        return await withSvgUrl(ctx, element);
       })
     );
 
@@ -170,11 +170,7 @@ export const findRecipeResult = internalQuery({
       .first();
 
     return {
-      element: {
-        _id: resultElement._id,
-        name: resultElement.name,
-        SVG: resultElement.SVG,
-      },
+      element: await withSvgUrl(ctx, resultElement),
       alreadyUnlocked: !!existingUnlock,
     };
   },
@@ -214,7 +210,7 @@ export const discover = internalAction({
     element2: v.id("elements"),
     userId: v.id("users"),
   },
-  handler: async (ctx, args): Promise<{ element: { _id: string; name: string; SVG: string }; elementDiscovered: boolean } | null> => {
+  handler: async (ctx, args): Promise<{ element: ElementResult; elementDiscovered: boolean } | null> => {
     const element1 = await ctx.runQuery(internal.elements.getElementPublic, {
       elementId: args.element1,
     });
@@ -247,23 +243,35 @@ export const discover = internalAction({
     });
 
     let resultElementId: Id<"elements">;
-    let resultSVG: string;
+    let resultElement: ElementResult;
     let elementDiscovered = false;
 
     if (existingElement) {
       resultElementId = existingElement._id;
-      resultSVG = existingElement.SVG;
+      resultElement = {
+        _id: existingElement._id,
+        name: existingElement.name,
+        svgUrl: existingElement.svgStorageId
+          ? await ctx.storage.getUrl(existingElement.svgStorageId)
+          : null,
+        SVG: existingElement.SVG,
+      };
     } else {
       // Create new element with discoveredBy set to current user
       const svg = await ctx.runAction(internal.ai.generateSVG, {
         elementName: resultName,
       });
+      const svgStorageId = await storeSvg(ctx, svg);
       resultElementId = await ctx.runMutation(internal.elements.insertElement, {
         name: resultName,
-        SVG: svg,
+        svgStorageId,
         discoveredBy: args.userId,
       }) as Id<"elements">;
-      resultSVG = svg;
+      resultElement = {
+        _id: resultElementId,
+        name: resultName,
+        svgUrl: await ctx.storage.getUrl(svgStorageId),
+      };
       elementDiscovered = true;
     }
 
@@ -288,18 +296,14 @@ export const discover = internalAction({
     }
 
     return {
-      element: {
-        _id: resultElementId,
-        name: resultName,
-        SVG: resultSVG,
-      },
+      element: resultElement,
       elementDiscovered,
     };
   },
 });
 
 type CombineResult = 
-  | { element: { _id: string; name: string; SVG: string }; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean; requiresLogin?: false; rateLimitExceeded?: false }
+  | { element: ElementResult; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean; requiresLogin?: false; rateLimitExceeded?: false }
   | { requiresLogin: true }
   | { rateLimitExceeded: true }
   | null;

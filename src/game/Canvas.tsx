@@ -1,16 +1,18 @@
-import type { Doc, Id } from '../../convex/_generated/dataModel'
+import type { Id } from '../../convex/_generated/dataModel'
 import { useRef, useState } from 'preact/hooks'
+import { ElementSvg } from '../components/ElementSvg'
+import type { ElementView } from '../types'
 
 export type CanvasElement = {
   id: string
   x: number
   y: number
-  element: Doc<'elements'>
+  element: ElementView
 }
 
 type CanvasProps = {
   elements: CanvasElement[]
-  onAddElement: (element: Doc<'elements'>, x: number, y: number) => void
+  onAddElement: (element: ElementView, x: number, y: number) => void
   onMoveElement: (id: string, x: number, y: number) => void
   onRemoveElement: (id: string) => void
   onBringToFront: (id: string) => void
@@ -121,7 +123,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
       // Adding new element from collection
       const elementData = e.dataTransfer.getData('application/element')
       if (elementData) {
-        const element = JSON.parse(elementData) as Doc<'elements'>
+        const element = JSON.parse(elementData) as ElementView
         const targetElement = findElementAtPosition(dropX, dropY)
 
         if (targetElement) {
@@ -241,9 +243,11 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
             onDragStart={(e) => handleElementDragStart(e, canvasElement)}
             onDragEnd={(e) => handleElementDragEnd(e, canvasElement)}
           >
-            <div
-              class="w-[60px] h-[60px] pointer-events-none flex items-center justify-center flex-shrink-0"
-              dangerouslySetInnerHTML={{ __html: canvasElement.element.SVG }}
+            <ElementSvg
+              name={canvasElement.element.name}
+              svgUrl={canvasElement.element.svgUrl}
+              legacySvg={canvasElement.element.SVG}
+              class="w-[60px] h-[60px] pointer-events-none flex-shrink-0"
             />
             <span class="text-sm text-gray-700 mt-1 text-center leading-tight line-clamp-2 pointer-events-none">
               {canvasElement.element.name}

@@ -1,6 +1,7 @@
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { Modal } from './Modal'
+import { ElementSvg } from '../components/ElementSvg'
 
 type DiscoveredItemsModalProps = {
   isOpen: boolean
@@ -33,9 +34,11 @@ export function DiscoveredItemsModal({ isOpen, onClose }: DiscoveredItemsModalPr
               key={element._id}
               class="bg-gray-50 rounded-lg p-3 flex flex-col items-center border border-gray-200"
             >
-              <div
+              <ElementSvg
+                name={element.name}
+                svgUrl={element.svgUrl}
+                legacySvg={element.SVG}
                 class="w-12 h-12 mb-2"
-                dangerouslySetInnerHTML={{ __html: element.SVG }}
               />
               <span class="text-xs text-gray-700 text-center font-medium">
                 {element.name}

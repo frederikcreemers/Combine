@@ -5,6 +5,7 @@ import { generateRecipe as generateRecipeAI, capitalizeElementName, minifySVG } 
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { suggestRecipes as suggestRecipesAI } from "./ai";
 import type { Id } from "./_generated/dataModel";
+import { readSvg, storeSvg, withSvgUrl } from "./elements";
 // Helper to check if user is admin (for use in queries/mutations)
 async function assertAdmin(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx);
@@ -57,7 +58,8 @@ export const getUnusedElements = query({
       usedAsIngredient.add(recipe.ingredient2);
     }
     
-    return allElements.filter((element) => !usedAsIngredient.has(element._id));
+    const elements = allElements.filter((element) => !usedAsIngredient.has(element._id));
+    return await Promise.all(elements.map((element) => withSvgUrl(ctx, element)));
   },
 });
 
@@ -75,10 +77,11 @@ export const getOrphanedElements = query({
       hasRecipeResultingIn.add(recipe.result);
     }
     
-    return allElements.filter((element) => 
+    const elements = allElements.filter((element) =>
       !hasRecipeResultingIn.has(element._id) && 
       !INITIAL_ELEMENT_NAMES.includes(element.name)
     );
+    return await Promise.all(elements.map((element) => withSvgUrl(ctx, element)));
   },
 });
 
@@ -114,9 +117,10 @@ export const addElement = action({
       });
     }
 
+    const svgStorageId = await storeSvg(ctx, svg);
     const elementId: string = await ctx.runMutation(internal.elements.insertElement, {
       name: capitalizedName,
-      SVG: svg,
+      svgStorageId,
     });
 
     return { id: elementId, name: capitalizedName };
@@ -129,18 +133,19 @@ export const getElement = query({
   },
   handler: async (ctx, args) => {
     await assertAdmin(ctx);
-    return await ctx.db.get(args.elementId);
+    const element = await ctx.db.get(args.elementId);
+    return element ? await withSvgUrl(ctx, element) : null;
   },
 });
 
-export const updateElement = mutation({
+export const updateElement = action({
   args: {
     elementId: v.id("elements"),
     name: v.string(),
     SVG: v.string(),
   },
   handler: async (ctx, args) => {
-    await assertAdmin(ctx);
+    await assertAdminAction(ctx);
     // Capitalize each word in the name
     const trimmedName = args.name.trim();
     const capitalizedName = trimmedName
@@ -148,9 +153,11 @@ export const updateElement = mutation({
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(" ");
 
-    await ctx.db.patch(args.elementId, {
+    const svgStorageId = await storeSvg(ctx, args.SVG);
+    await ctx.runMutation(internal.admin.updateElementInternal, {
+      elementId: args.elementId,
       name: capitalizedName,
-      SVG: args.SVG.trim(),
+      svgStorageId,
     });
   },
 });
@@ -172,16 +179,18 @@ export const regenerateSVG = action({
     }
 
     // Generate new SVG with feedback
+    const oldSVG = await readSvg(ctx, element);
     const newSVG: string = await ctx.runAction(internal.ai.regenerateSVG, {
       elementName: element.name,
-      oldSVG: element.SVG,
+      oldSVG,
       feedback: args.feedback,
     });
 
     // Update the element with the new SVG
+    const svgStorageId = await storeSvg(ctx, newSVG);
     await ctx.runMutation(internal.elements.updateElementSVG, {
       elementId: args.elementId,
-      SVG: newSVG,
+      svgStorageId,
     });
 
     return newSVG;
@@ -213,10 +222,11 @@ export const renameElement = action({
     });
 
     // Update the element with the new name and SVG
+    const svgStorageId = await storeSvg(ctx, newSVG);
     await ctx.runMutation(internal.admin.updateElementInternal, {
       elementId: args.elementId,
       name: capitalizedName,
-      SVG: newSVG,
+      svgStorageId,
     });
   },
 });
@@ -225,13 +235,22 @@ export const updateElementInternal = internalMutation({
   args: {
     elementId: v.id("elements"),
     name: v.string(),
-    SVG: v.string(),
+    svgStorageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
+    const element = await ctx.db.get(args.elementId);
+    if (!element) {
+      await ctx.storage.delete(args.svgStorageId);
+      throw new Error("Element not found");
+    }
     await ctx.db.patch(args.elementId, {
       name: args.name,
-      SVG: args.SVG,
+      SVG: undefined,
+      svgStorageId: args.svgStorageId,
     });
+    if (element.svgStorageId && element.svgStorageId !== args.svgStorageId) {
+      await ctx.storage.delete(element.svgStorageId);
+    }
   },
 });
 
@@ -275,7 +294,11 @@ export const deleteElement = mutation({
       await ctx.db.delete(unlocked._id);
     }
 
-    // Delete the element itself
+    // Delete the stored SVG and the element itself
+    const element = await ctx.db.get(args.elementId);
+    if (element?.svgStorageId) {
+      await ctx.storage.delete(element.svgStorageId);
+    }
     await ctx.db.delete(args.elementId);
   },
 });
@@ -479,9 +502,10 @@ export const generateRecipe = action({
       const svg = await ctx.runAction(internal.ai.generateSVG, {
         elementName: resultName,
       });
+      const svgStorageId = await storeSvg(ctx, svg);
       resultElementId = await ctx.runMutation(internal.elements.insertElement, {
         name: resultName,
-        SVG: svg,
+        svgStorageId,
       });
     }
 
@@ -558,6 +582,7 @@ export const minifyAllElementSVGs = internalMutation({
     let savedBytes = 0;
     
     for (const element of elements) {
+      if (!element.SVG) continue;
       const originalSize = element.SVG.length;
       const minified = minifySVG(element.SVG);
       const newSize = minified.length;

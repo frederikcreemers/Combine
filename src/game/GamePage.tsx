@@ -13,11 +13,13 @@ import { AboutModal } from './AboutModal'
 import { LoginRequiredModal } from './LoginRequiredModal'
 import { RateLimitModal } from './RateLimitModal'
 import { useRunAfterSignIn } from '../lib/useRunAfterSignIn'
-import type { Doc, Id } from '../../convex/_generated/dataModel'
+import type { Id } from '../../convex/_generated/dataModel'
+import type { ElementView } from '../types'
 
 type NewElement = {
   name: string
-  SVG: string
+  svgUrl: string | null
+  SVG?: string
   recipeDiscovered: boolean
   elementDiscovered: boolean
 }
@@ -49,7 +51,7 @@ export function GamePage() {
     }
   }, [isLoading, isAuthenticated, signIn, signOut])
 
-  const handleAddElement = useCallback((element: Doc<'elements'>, x: number, y: number) => {
+  const handleAddElement = useCallback((element: ElementView, x: number, y: number) => {
     const newCanvasElement: CanvasElement = {
       id: `canvas-element-${nextCanvasElementId++}`,
       x,
@@ -111,7 +113,7 @@ export function GamePage() {
               id: `canvas-element-${nextCanvasElementId++}`,
               x: position.x,
               y: position.y,
-              element: result.element as Doc<'elements'>,
+              element: result.element,
             }
             return [...filtered, newElement]
           })
@@ -120,6 +122,7 @@ export function GamePage() {
           if (result.new) {
             setNewElementToShow({
               name: result.element.name,
+              svgUrl: result.element.svgUrl,
               SVG: result.element.SVG,
               recipeDiscovered: result.recipeDiscovered,
               elementDiscovered: result.elementDiscovered,
