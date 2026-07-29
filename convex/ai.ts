@@ -90,7 +90,11 @@ export async function generateRecipe(
   const geminiPrompt = buildRecipePrompt(ingredient1Name, ingredient2Name, recipeExamples, existingElements, true);
   
   for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
-    const geminiResponse = await callOpenRouter(geminiPrompt, MODEL_GEMINI_FLASH);
+    const geminiResponse = await callOpenRouter(
+      geminiPrompt,
+      MODEL_GEMINI_RECIPE,
+      "minimal",
+    );
     const parsed = parseGeminiResponse(geminiResponse);
     
     if (!parsed) {
@@ -115,7 +119,11 @@ export async function generateRecipe(
     if (parsed.surprising) {
       console.log(`Gemini found surprising result "${trimmed}" for ${ingredient1Name} + ${ingredient2Name}, consulting OpenAI...`);
       const openaiPrompt = buildRecipePrompt(ingredient1Name, ingredient2Name, recipeExamples, existingElements, false);
-      const openaiResult = await callOpenRouter(openaiPrompt, MODEL_OPENAI);
+      const openaiResult = await callOpenRouter(
+        openaiPrompt,
+        MODEL_OPENAI,
+        "none",
+      );
       const openaiTrimmed = openaiResult.trim();
       
       if (openaiTrimmed.toUpperCase() !== "NO RESULT" && openaiTrimmed.length <= MAX_ELEMENT_NAME_LENGTH) {
@@ -149,7 +157,7 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
   No explanations, no markdown, just the recipes.
 `;
 
-  const result = await callOpenRouter(prompt, MODEL_OPENAI);
+  const result = await callOpenRouter(prompt, MODEL_OPENAI, "none");
   return result.split("\n").map((recipeLine) => {
     if (!recipeLine.includes("+") || !recipeLine.includes("=")) {
       return null;
@@ -165,10 +173,17 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
   }).filter((recipe) => recipe !== null);
 }
 
-const MODEL_GEMINI_FLASH = "google/gemini-3.6-flash";
+const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
+const MODEL_GEMINI_SVG = "google/gemini-3.5-flash-lite";
 const MODEL_OPENAI = "openai/gpt-5.6-terra";
 
-async function callOpenRouter(prompt: string, model: string = MODEL_GEMINI_FLASH): Promise<string> {
+type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+
+async function callOpenRouter(
+  prompt: string,
+  model: string,
+  reasoningEffort: ReasoningEffort,
+): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY environment variable is not set");
@@ -182,9 +197,7 @@ async function callOpenRouter(prompt: string, model: string = MODEL_GEMINI_FLASH
     },
     body: JSON.stringify({
       model,
-      ...(model === MODEL_OPENAI
-        ? { reasoning: { effort: "none" } }
-        : {}),
+      reasoning: { effort: reasoningEffort },
       messages: [
         {
           role: "user",
@@ -258,7 +271,11 @@ export const generateSVG = internalAction({
   handler: async (_ctx, args) => {
     const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(prompt, MODEL_GEMINI_FLASH);
+    const content = await callOpenRouter(
+      prompt,
+      MODEL_GEMINI_SVG,
+      "minimal",
+    );
     return extractSVG(content);
   },
 });
@@ -278,7 +295,11 @@ User feedback: ${args.feedback}
 
 Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(prompt, MODEL_GEMINI_FLASH);
+    const content = await callOpenRouter(
+      prompt,
+      MODEL_GEMINI_SVG,
+      "minimal",
+    );
     return extractSVG(content);
   },
 });
