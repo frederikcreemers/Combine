@@ -38,7 +38,7 @@ Determine what the result should be. You can:
 1. PREFER reusing an existing element from the list above when it makes sense - this keeps the game cohesive
 2. Create a new element name only if no existing element fits well - optimize for results that are interesting to build upon further
 3. Respond with "NO RESULT" if these elements should not be combinable
-4. Feel free to make the result the same as one of the ingredients. For instance beekeeper + human = beekeeper makes sense, because a human beekeeper is still just a beekeeper.
+4. Prefer a result that is different from both ingredients. Returning one of the ingredients is allowed only when combining them genuinely leaves that ingredient unchanged, and only when no other existing element describes the result better. Before returning either ingredient, check the existing elements and relevant recipe patterns for a more specific result. For example, when a profession or activity is combined with "Tool", prefer its characteristic existing tool.
 5. Also consider whimsical combinations, like sky + cheese = moon.
 6. Elements like "Idea" or "Philosophy" can be combined with concrete things to create broad concepts (e.g. burger + philosophy = food), but limit this to a small set of widely applicable concepts rather than creating overly specific abstractions.
 
