@@ -118,6 +118,7 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
               class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-grab active:cursor-grabbing select-none"
               draggable
               onDragStart={(e) => handleDragStart(e, element)}
+              title={element.description}
             >
               <ElementSvg
                 name={element.name}

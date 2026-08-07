@@ -42,6 +42,11 @@ export function DiscoveredItemsModal({ isOpen, onClose }: DiscoveredItemsModalPr
               <span class="text-xs text-gray-700 text-center font-medium">
                 {element.name}
               </span>
+              {element.description && (
+                <span class="text-[10px] text-gray-500 italic text-center mt-1">
+                  {element.description}
+                </span>
+              )}
             </div>
           ))}
         </div>

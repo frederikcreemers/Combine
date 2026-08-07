@@ -18,6 +18,7 @@ import type { ElementView } from '../types'
 
 type NewElement = {
   name: string
+  description?: string
   svgUrl: string
   recipeDiscovered: boolean
   elementDiscovered: boolean
@@ -121,6 +122,7 @@ export function GamePage() {
           if (result.new) {
             setNewElementToShow({
               name: result.element.name,
+              description: result.element.description,
               svgUrl: result.element.svgUrl,
               recipeDiscovered: result.recipeDiscovered,
               elementDiscovered: result.elementDiscovered,

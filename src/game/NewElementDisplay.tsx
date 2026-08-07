@@ -4,6 +4,7 @@ import { ElementSvg } from '../components/ElementSvg'
 type NewElementDisplayProps = {
   element: {
     name: string
+    description?: string
     svgUrl: string
   }
   recipeDiscovered?: boolean
@@ -60,9 +61,12 @@ export function NewElementDisplay({ element, recipeDiscovered, elementDiscovered
         style={{ transformOrigin: 'center center' }}
       />
       <h1 class="text-4xl font-bold text-white mb-8 relative z-10">New Element!</h1>
-      <div class="bg-white border border-gray-400 rounded-lg p-4 flex flex-col items-center relative z-10">
+      <div class="bg-white border border-gray-400 rounded-lg p-4 flex flex-col items-center relative z-10 max-w-md mx-4">
         <ElementSvg name={element.name} svgUrl={element.svgUrl} class="w-32 h-32" />
         <span class="text-xl text-gray-700 mt-2">{element.name}</span>
+        {element.description && (
+          <p class="text-sm text-gray-500 italic text-center mt-2">{element.description}</p>
+        )}
       </div>
       {elementDiscovered ? (
         <p class="text-yellow-300 text-lg font-semibold mt-6 relative z-10">
