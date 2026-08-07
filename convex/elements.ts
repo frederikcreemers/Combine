@@ -44,12 +44,14 @@ export async function readSvg(
 export const insertElement = internalMutation({
   args: {
     name: v.string(),
+    description: v.optional(v.string()),
     svgStorageId: v.id("_storage"),
     discoveredBy: v.optional(v.id("users")),
   },
   handler: async (ctx, args): Promise<string> => {
     const elementId = await ctx.db.insert("elements", {
       name: args.name,
+      description: args.description,
       svgStorageId: args.svgStorageId,
       discoveredBy: args.discoveredBy,
     });

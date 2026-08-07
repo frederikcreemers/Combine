@@ -1,7 +1,7 @@
 import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
-import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
+import { generateRecipe as generateRecipeAI, generateElementDescription, capitalizeElementName } from "./ai";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { suggestRecipes as suggestRecipesAI } from "./ai";
 import type { Id } from "./_generated/dataModel";
@@ -110,6 +110,11 @@ export const addElement = action({
 
     let svg = args.SVG;
 
+    const descriptionPromise = generateElementDescription(capitalizedName).catch((error) => {
+      console.error(`Failed to generate description for ${capitalizedName}:`, error);
+      return undefined;
+    });
+
     // If SVG is empty, generate one using the AI action
     if (!svg || svg.trim() === "") {
       svg = await ctx.runAction(internal.ai.generateSVG, {
@@ -120,6 +125,7 @@ export const addElement = action({
     const svgStorageId = await storeSvg(ctx, svg);
     const elementId: string = await ctx.runMutation(internal.elements.insertElement, {
       name: capitalizedName,
+      description: await descriptionPromise,
       svgStorageId,
     });
 
@@ -498,12 +504,19 @@ export const generateRecipe = action({
       resultElementId = existingElement._id;
     } else {
       // Create new element (no discoveredBy for admin-generated recipes)
-      const svg = await ctx.runAction(internal.ai.generateSVG, {
-        elementName: resultName,
-      });
+      const [svg, description] = await Promise.all([
+        ctx.runAction(internal.ai.generateSVG, {
+          elementName: resultName,
+        }),
+        generateElementDescription(resultName).catch((error) => {
+          console.error(`Failed to generate description for ${resultName}:`, error);
+          return undefined;
+        }),
+      ]);
       const svgStorageId = await storeSvg(ctx, svg);
       resultElementId = await ctx.runMutation(internal.elements.insertElement, {
         name: resultName,
+        description,
         svgStorageId,
       });
     }

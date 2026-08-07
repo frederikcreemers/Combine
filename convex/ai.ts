@@ -140,6 +140,24 @@ export async function generateRecipe(
   return "NO RESULT";
 }
 
+export async function generateElementDescription(elementName: string): Promise<string> {
+  const prompt = `You are writing witty one-line descriptions for elements in a Little Alchemy-like game where players combine elements to discover new ones.
+
+Examples of the tone to match:
+Land: Anything on Earth's surface that isn't covered by water, but is owned by Woody Guthrie and YOU!
+Life: It finds a way.
+Electricity: Charged particles, or as it's more technically known: THE POWER OF THE GODS.
+Wind: Air that blows all over the place and defies all attempts at prediction.
+
+Write a witty one-line description for the element "${elementName}".
+
+Reply with ONLY the description text. No quotes, no explanations, no markdown.`;
+
+  const result = await callOpenRouter(prompt, MODEL_OPENAI, "low");
+  // Models sometimes wrap the description in quotes despite instructions
+  return result.trim().replace(/^["']+|["']+$/g, "").trim();
+}
+
 export async function suggestRecipes(allRecipes: { ingredient1: string; ingredient2: string; result: string }[]): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
   const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
   

@@ -2,7 +2,7 @@ import { action, internalAction, internalMutation, internalQuery, mutation, quer
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { generateRecipe as generateRecipeAI, capitalizeElementName } from "./ai";
+import { generateRecipe as generateRecipeAI, generateElementDescription, capitalizeElementName } from "./ai";
 import { rateLimiter } from "./rateLimits";
 import type { Id } from "./_generated/dataModel";
 import { storeSvg, withSvgUrl } from "./elements";
@@ -10,6 +10,7 @@ import { storeSvg, withSvgUrl } from "./elements";
 type ElementResult = {
   _id: Id<"elements">;
   name: string;
+  description?: string;
   svgUrl: string;
 };
 
@@ -254,16 +255,25 @@ export const discover = internalAction({
       resultElement = {
         _id: existingElement._id,
         name: existingElement.name,
+        description: existingElement.description,
         svgUrl,
       };
     } else {
       // Create new element with discoveredBy set to current user
-      const svg = await ctx.runAction(internal.ai.generateSVG, {
-        elementName: resultName,
-      });
+      const [svg, description] = await Promise.all([
+        ctx.runAction(internal.ai.generateSVG, {
+          elementName: resultName,
+        }),
+        // A missing description shouldn't block the discovery
+        generateElementDescription(resultName).catch((error) => {
+          console.error(`Failed to generate description for ${resultName}:`, error);
+          return undefined;
+        }),
+      ]);
       const svgStorageId = await storeSvg(ctx, svg);
       resultElementId = await ctx.runMutation(internal.elements.insertElement, {
         name: resultName,
+        description,
         svgStorageId,
         discoveredBy: args.userId,
       }) as Id<"elements">;
@@ -274,6 +284,7 @@ export const discover = internalAction({
       resultElement = {
         _id: resultElementId,
         name: resultName,
+        description,
         svgUrl,
       };
       elementDiscovered = true;
