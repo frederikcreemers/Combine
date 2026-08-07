@@ -148,6 +148,7 @@ export const updateElement = action({
   args: {
     elementId: v.id("elements"),
     name: v.string(),
+    description: v.optional(v.string()),
     SVG: v.string(),
   },
   handler: async (ctx, args) => {
@@ -163,6 +164,7 @@ export const updateElement = action({
     await ctx.runMutation(internal.admin.updateElementInternal, {
       elementId: args.elementId,
       name: capitalizedName,
+      description: args.description,
       svgStorageId,
     });
   },
@@ -241,6 +243,7 @@ export const updateElementInternal = internalMutation({
   args: {
     elementId: v.id("elements"),
     name: v.string(),
+    description: v.optional(v.string()),
     svgStorageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
@@ -252,6 +255,11 @@ export const updateElementInternal = internalMutation({
     await ctx.db.patch(args.elementId, {
       name: args.name,
       svgStorageId: args.svgStorageId,
+      // Omitting the arg leaves the description unchanged (e.g. on rename);
+      // passing an empty string clears it.
+      ...(args.description !== undefined
+        ? { description: args.description.trim() || undefined }
+        : {}),
     });
     if (element.svgStorageId !== args.svgStorageId) {
       await ctx.storage.delete(element.svgStorageId);
