@@ -4,7 +4,7 @@ import { api, internal } from "./_generated/api";
 import { generateRecipe as generateRecipeAI, generateElementDescription, capitalizeElementName } from "./ai";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { suggestRecipes as suggestRecipesAI } from "./ai";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { readSvg, storeSvg, withSvgUrl } from "./elements";
 // Helper to check if user is admin (for use in queries/mutations)
 async function assertAdmin(ctx: { db: any; auth: any }) {
@@ -264,6 +264,71 @@ export const updateElementInternal = internalMutation({
     if (element.svgStorageId !== args.svgStorageId) {
       await ctx.storage.delete(element.svgStorageId);
     }
+  },
+});
+
+export const pickElementsWithoutDescription = internalQuery({
+  args: {
+    count: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const allElements = await ctx.db.query("elements").collect();
+    return allElements.filter((element) => !element.description).slice(0, args.count);
+  },
+});
+
+export const generateDescriptions = action({
+  args: {
+    // When omitted, picks elements that don't have a description yet
+    elementIds: v.optional(v.array(v.id("elements"))),
+  },
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ elementId: Id<"elements">; name: string; svgUrl: string; description: string }[]> => {
+    await assertAdminAction(ctx);
+
+    let elements: Doc<"elements">[];
+    if (args.elementIds && args.elementIds.length > 0) {
+      const fetched = await Promise.all(
+        args.elementIds.map((elementId) =>
+          ctx.runQuery(internal.elements.getElement, { elementId })
+        )
+      );
+      elements = fetched.filter((element): element is Doc<"elements"> => element !== null);
+    } else {
+      elements = await ctx.runQuery(internal.admin.pickElementsWithoutDescription, {
+        count: 10,
+      });
+    }
+
+    return await Promise.all(
+      elements.map(async (element) => {
+        const description = await generateElementDescription(element.name);
+        const svgUrl = await ctx.storage.getUrl(element.svgStorageId);
+        return {
+          elementId: element._id,
+          name: element.name,
+          svgUrl: svgUrl ?? "",
+          description,
+        };
+      })
+    );
+  },
+});
+
+export const setElementDescription = mutation({
+  args: {
+    elementId: v.id("elements"),
+    description: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await assertAdmin(ctx);
+    const trimmed = args.description.trim();
+    if (!trimmed) {
+      throw new Error("Description cannot be empty");
+    }
+    await ctx.db.patch(args.elementId, { description: trimmed });
   },
 });
 

@@ -3,6 +3,7 @@ import { AdminPage } from './admin/AdminPage'
 import { OverviewPage } from './admin/OverviewPage'
 import { ElementsPage } from './admin/ElementsPage'
 import { RecipesPage } from './admin/RecipesPage'
+import { DescriptionsPage } from './admin/DescriptionsPage'
 import { ElementPage } from './admin/ElementPage'
 import { EditRecipePage } from './admin/EditRecipePage'
 import { AdminGuard } from './admin/AdminGuard'
@@ -30,6 +31,7 @@ export function App() {
         <Route path="/admin" component={() => <ProtectedAdminPage><OverviewPage /></ProtectedAdminPage>} />
         <Route path="/admin/elements" component={() => <ProtectedAdminPage><ElementsPage /></ProtectedAdminPage>} />
         <Route path="/admin/recipes" component={() => <ProtectedAdminPage><RecipesPage /></ProtectedAdminPage>} />
+        <Route path="/admin/descriptions" component={() => <ProtectedAdminPage><DescriptionsPage /></ProtectedAdminPage>} />
         <Route path="/admin/elements/:id" component={ProtectedElementPage} />
         <Route path="/admin/recipes/:id" component={ProtectedEditRecipePage} />
       </Router>
