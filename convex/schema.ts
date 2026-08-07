@@ -6,6 +6,7 @@ export default defineSchema({
   ...authTables,
   elements: defineTable({
     name: v.string(),
+    description: v.optional(v.string()),
     svgStorageId: v.id("_storage"),
     discoveredBy: v.optional(v.id("users")),
   })
