@@ -18,12 +18,11 @@ function buildRecipePrompt(
   ingredient2Name: string,
   recipeExamples: string,
   existingElements: string[],
-  withSurpriseCheck: boolean
+  withSurpriseCheck: boolean,
 ): string {
-  const elementsList = existingElements.length > 0 
-    ? existingElements.join(", ")
-    : "None yet";
-    
+  const elementsList =
+    existingElements.length > 0 ? existingElements.join(", ") : "None yet";
+
   const basePrompt = `You are a recipe generator for a game where elements can be combined.
 
 All existing elements in the game:
@@ -69,9 +68,12 @@ function parseGeminiResponse(response: string): GeminiRecipeResponse | null {
     // Try to extract JSON from the response
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return null;
-    
+
     const parsed = JSON.parse(jsonMatch[0]);
-    if (typeof parsed.result === 'string' && typeof parsed.surprising === 'boolean') {
+    if (
+      typeof parsed.result === "string" &&
+      typeof parsed.surprising === "boolean"
+    ) {
       return parsed;
     }
     return null;
@@ -84,11 +86,17 @@ export async function generateRecipe(
   ingredient1Name: string,
   ingredient2Name: string,
   recipeExamples: string,
-  existingElements: string[]
+  existingElements: string[],
 ): Promise<string> {
   // First, try with Gemini Flash to get result + surprise indicator
-  const geminiPrompt = buildRecipePrompt(ingredient1Name, ingredient2Name, recipeExamples, existingElements, true);
-  
+  const geminiPrompt = buildRecipePrompt(
+    ingredient1Name,
+    ingredient2Name,
+    recipeExamples,
+    existingElements,
+    true,
+  );
+
   for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
     const geminiResponse = await callOpenRouter(
       geminiPrompt,
@@ -96,51 +104,68 @@ export async function generateRecipe(
       "minimal",
     );
     const parsed = parseGeminiResponse(geminiResponse);
-    
+
     if (!parsed) {
       console.log(`Failed to parse Gemini response, retrying...`);
       continue;
     }
-    
+
     const trimmed = parsed.result.trim();
-    
+
     // Accept "NO RESULT" regardless of length
     if (trimmed.toUpperCase() === "NO RESULT") {
       return trimmed;
     }
-    
+
     // Retry if the result is too long
     if (trimmed.length > MAX_ELEMENT_NAME_LENGTH) {
-      console.log(`Generated name too long (${trimmed.length} chars): "${trimmed}", retrying...`);
+      console.log(
+        `Generated name too long (${trimmed.length} chars): "${trimmed}", retrying...`,
+      );
       continue;
     }
-    
+
     // If surprising, get a second opinion from OpenAI
     if (parsed.surprising) {
-      console.log(`Gemini found surprising result "${trimmed}" for ${ingredient1Name} + ${ingredient2Name}, consulting OpenAI...`);
-      const openaiPrompt = buildRecipePrompt(ingredient1Name, ingredient2Name, recipeExamples, existingElements, false);
+      console.log(
+        `Gemini found surprising result "${trimmed}" for ${ingredient1Name} + ${ingredient2Name}, consulting OpenAI...`,
+      );
+      const openaiPrompt = buildRecipePrompt(
+        ingredient1Name,
+        ingredient2Name,
+        recipeExamples,
+        existingElements,
+        false,
+      );
       const openaiResult = await callOpenRouter(
         openaiPrompt,
         MODEL_OPENAI,
         "none",
       );
       const openaiTrimmed = openaiResult.trim();
-      
-      if (openaiTrimmed.toUpperCase() !== "NO RESULT" && openaiTrimmed.length <= MAX_ELEMENT_NAME_LENGTH) {
+
+      if (
+        openaiTrimmed.toUpperCase() !== "NO RESULT" &&
+        openaiTrimmed.length <= MAX_ELEMENT_NAME_LENGTH
+      ) {
         console.log(`OpenAI suggested "${openaiTrimmed}" instead`);
         return openaiTrimmed;
       }
     }
-    
+
     return trimmed;
   }
-  
+
   // After max retries, return "NO RESULT" as a fallback
-  console.log(`Failed to generate valid recipe after ${MAX_GENERATION_RETRIES} attempts`);
+  console.log(
+    `Failed to generate valid recipe after ${MAX_GENERATION_RETRIES} attempts`,
+  );
   return "NO RESULT";
 }
 
-export async function generateElementDescription(elementName: string): Promise<string> {
+export async function generateElementDescription(
+  elementName: string,
+): Promise<string> {
   const prompt = `You are writing witty one-line descriptions for elements in a Little Alchemy-like game where players combine elements to discover new ones.
 
 Examples of the tone to match:
@@ -148,6 +173,13 @@ Land: Anything on Earth's surface that isn't covered by water, but is owned by W
 Life: It finds a way.
 Electricity: Charged particles, or as it's more technically known: THE POWER OF THE GODS.
 Wind: Air that blows all over the place and defies all attempts at prediction.
+Brick: A block of hardened clay that's used for construction and metaphors.
+Sky: The domain of clouds.
+Atmosphere: The layer of gases surrounding our planet that protects us from various invisible space horrors.
+Planet: A star dancer.
+Computer: An electronic device that can both aid and hinder work.
+Boat: A craft that allows one to travel over water while still being at its mercy.
+
 
 Write a witty one-line description for the element "${elementName}".
 
@@ -155,10 +187,15 @@ Reply with ONLY the description text. No quotes, no explanations, no markdown.`;
 
   const result = await callOpenRouter(prompt, MODEL_OPENAI, "low");
   // Models sometimes wrap the description in quotes despite instructions
-  return result.trim().replace(/^["']+|["']+$/g, "").trim();
+  return result
+    .trim()
+    .replace(/^["']+|["']+$/g, "")
+    .trim();
 }
 
-export async function suggestRecipes(allRecipes: { ingredient1: string; ingredient2: string; result: string }[]): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
+export async function suggestRecipes(
+  allRecipes: { ingredient1: string; ingredient2: string; result: string }[],
+): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
   const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
   
   ${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
@@ -176,26 +213,36 @@ export async function suggestRecipes(allRecipes: { ingredient1: string; ingredie
 `;
 
   const result = await callOpenRouter(prompt, MODEL_OPENAI, "none");
-  return result.split("\n").map((recipeLine) => {
-    if (!recipeLine.includes("+") || !recipeLine.includes("=")) {
-      return null;
-    }
-    const [ingredients, result] = recipeLine.split("=");
-    const [ingredient1, ingredient2] = ingredients.split("+");
+  return result
+    .split("\n")
+    .map((recipeLine) => {
+      if (!recipeLine.includes("+") || !recipeLine.includes("=")) {
+        return null;
+      }
+      const [ingredients, result] = recipeLine.split("=");
+      const [ingredient1, ingredient2] = ingredients.split("+");
 
-    return {
-      ingredient1: ingredient1.trim(),
-      ingredient2: ingredient2.trim(),
-      result: result.trim(),
-    };
-  }).filter((recipe) => recipe !== null);
+      return {
+        ingredient1: ingredient1.trim(),
+        ingredient2: ingredient2.trim(),
+        result: result.trim(),
+      };
+    })
+    .filter((recipe) => recipe !== null);
 }
 
 const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
 const MODEL_GEMINI_SVG = "google/gemini-3.5-flash-lite";
 const MODEL_OPENAI = "openai/gpt-5.6-terra";
 
-type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+type ReasoningEffort =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max";
 
 async function callOpenRouter(
   prompt: string,
@@ -207,23 +254,26 @@ async function callOpenRouter(
     throw new Error("OPENROUTER_API_KEY environment variable is not set");
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+  const response = await fetch(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        reasoning: { effort: reasoningEffort },
+        messages: [
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      reasoning: { effort: reasoningEffort },
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    }),
-  });
+  );
 
   if (!response.ok) {
     throw new Error(`OpenRouter API error: ${response.statusText}`);
@@ -234,27 +284,29 @@ async function callOpenRouter(
 }
 
 export function minifySVG(svg: string): string {
-  return svg
-    // Remove XML comments
-    .replace(/<!--[\s\S]*?-->/g, '')
-    // Remove whitespace between tags
-    .replace(/>\s+</g, '><')
-    // Remove leading/trailing whitespace
-    .trim()
-    // Collapse multiple spaces in attributes to single space
-    .replace(/\s{2,}/g, ' ')
-    // Remove space before closing bracket
-    .replace(/\s+>/g, '>')
-    // Remove space before self-closing bracket
-    .replace(/\s+\/>/g, '/>')
-    // Remove unnecessary semicolons in style attributes
-    .replace(/;"/g, '"')
-    // Remove empty style attributes
-    .replace(/\s*style=""\s*/g, ' ')
-    // Remove empty class attributes  
-    .replace(/\s*class=""\s*/g, ' ')
-    // Clean up any double spaces created
-    .replace(/\s{2,}/g, ' ');
+  return (
+    svg
+      // Remove XML comments
+      .replace(/<!--[\s\S]*?-->/g, "")
+      // Remove whitespace between tags
+      .replace(/>\s+</g, "><")
+      // Remove leading/trailing whitespace
+      .trim()
+      // Collapse multiple spaces in attributes to single space
+      .replace(/\s{2,}/g, " ")
+      // Remove space before closing bracket
+      .replace(/\s+>/g, ">")
+      // Remove space before self-closing bracket
+      .replace(/\s+\/>/g, "/>")
+      // Remove unnecessary semicolons in style attributes
+      .replace(/;"/g, '"')
+      // Remove empty style attributes
+      .replace(/\s*style=""\s*/g, " ")
+      // Remove empty class attributes
+      .replace(/\s*class=""\s*/g, " ")
+      // Clean up any double spaces created
+      .replace(/\s{2,}/g, " ")
+  );
 }
 
 function extractSVG(content: string): string {
@@ -289,11 +341,7 @@ export const generateSVG = internalAction({
   handler: async (_ctx, args) => {
     const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(
-      prompt,
-      MODEL_GEMINI_SVG,
-      "minimal",
-    );
+    const content = await callOpenRouter(prompt, MODEL_GEMINI_SVG, "minimal");
     return extractSVG(content);
   },
 });
@@ -313,11 +361,7 @@ User feedback: ${args.feedback}
 
 Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(
-      prompt,
-      MODEL_GEMINI_SVG,
-      "minimal",
-    );
+    const content = await callOpenRouter(prompt, MODEL_GEMINI_SVG, "minimal");
     return extractSVG(content);
   },
 });
