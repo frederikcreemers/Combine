@@ -1,7 +1,7 @@
 {
   "name": "Combine - infinite Combinations",
   "short_name": "Combine",
-  "description": "Starting with just the earth, wind, fire, water and time, combine elements to explore an infinite world of possible elements",
+  "description": "Starting with just earth, wind, fire, water and time, combine elements to explore an infinite world of possible elements",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f3f4f6",
