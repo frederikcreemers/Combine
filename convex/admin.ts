@@ -43,6 +43,61 @@ async function assertAdminAction(ctx: { runQuery: any }) {
   }
 }
 
+// ============== USER FUNCTIONS ==============
+
+function userSummary(user: Doc<"users">) {
+  return {
+    _id: user._id,
+    _creationTime: user._creationTime,
+    email: user.email,
+    name: user.name,
+    isAnonymous: user.isAnonymous ?? false,
+  };
+}
+
+export const listUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    await assertAdmin(ctx);
+    const users = await ctx.db.query("users").order("desc").collect();
+    return users.map(userSummary);
+  },
+});
+
+export const getUserProgress = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    await assertAdmin(ctx);
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+
+    const unlockedEntries = await ctx.db
+      .query("unlockedElements")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+    const unlockedElements = (
+      await Promise.all(unlockedEntries.map((entry) => ctx.db.get(entry.elementId)))
+    ).filter((element): element is Doc<"elements"> => element !== null);
+
+    const discoveredElements = await ctx.db
+      .query("elements")
+      .withIndex("by_discoveredBy", (q) => q.eq("discoveredBy", args.userId))
+      .collect();
+
+    return {
+      user: userSummary(user),
+      unlockedElements: await Promise.all(
+        unlockedElements.map((element) => withSvgUrl(ctx, element))
+      ),
+      discoveredElements: await Promise.all(
+        discoveredElements.map((element) => withSvgUrl(ctx, element))
+      ),
+    };
+  },
+});
+
 // ============== ELEMENT FUNCTIONS ==============
 
 export const getUnusedElements = query({
