@@ -15,6 +15,7 @@ export function AdminPage({ children }: AdminPageProps) {
             { id: 'elements', label: 'Elements', href: '/admin/elements' },
             { id: 'recipes', label: 'Recipes', href: '/admin/recipes' },
             { id: 'descriptions', label: 'Descriptions', href: '/admin/descriptions' },
+            { id: 'costs', label: 'Costs', href: '/admin/costs' },
             { id: 'users', label: 'Users', href: '/admin/users' },
           ]}
         >

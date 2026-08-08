@@ -1,5 +1,6 @@
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 // Shared helper to capitalize element names
 export function capitalizeElementName(name: string): string {
@@ -12,6 +13,92 @@ export function capitalizeElementName(name: string): string {
 
 const MAX_ELEMENT_NAME_LENGTH = 30;
 const MAX_GENERATION_RETRIES = 3;
+
+const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
+const MODEL_GEMINI_SVG = "google/gemini-3.5-flash-lite";
+const MODEL_OPENAI = "openai/gpt-5.6-terra";
+
+type ReasoningEffort =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max";
+
+export type ModelUsage = {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost: number;
+};
+
+// Minimal action context needed to persist cost logs
+export type AiLogCtx = {
+  runMutation: (...args: any[]) => Promise<any>;
+};
+
+function aggregateModelUsages(usages: ModelUsage[]) {
+  const byModel = new Map<
+    string,
+    {
+      model: string;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      cost: number;
+      calls: number;
+    }
+  >();
+
+  for (const usage of usages) {
+    const existing = byModel.get(usage.model);
+    if (existing) {
+      existing.promptTokens += usage.promptTokens;
+      existing.completionTokens += usage.completionTokens;
+      existing.totalTokens += usage.totalTokens;
+      existing.cost += usage.cost;
+      existing.calls += 1;
+    } else {
+      byModel.set(usage.model, {
+        model: usage.model,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.totalTokens,
+        cost: usage.cost,
+        calls: 1,
+      });
+    }
+  }
+
+  return [...byModel.values()];
+}
+
+async function recordAiCost(
+  ctx: AiLogCtx,
+  description: string,
+  usages: ModelUsage[]
+) {
+  if (usages.length === 0) return;
+
+  const models = aggregateModelUsages(usages);
+  const totalTokens = models.reduce((sum, model) => sum + model.totalTokens, 0);
+  const totalCost = models.reduce((sum, model) => sum + model.cost, 0);
+
+  try {
+    await ctx.runMutation(internal.aiCostLogs.insert, {
+      description,
+      models,
+      totalTokens,
+      totalCost,
+    });
+  } catch (error) {
+    // Cost logging must never break generation
+    console.error("Failed to record AI cost log:", error);
+  }
+}
 
 function buildRecipePrompt(
   ingredient1Name: string,
@@ -83,90 +170,106 @@ function parseGeminiResponse(response: string): GeminiRecipeResponse | null {
 }
 
 export async function generateRecipe(
+  ctx: AiLogCtx,
   ingredient1Name: string,
   ingredient2Name: string,
   recipeExamples: string,
   existingElements: string[],
 ): Promise<string> {
-  // First, try with Gemini Flash to get result + surprise indicator
-  const geminiPrompt = buildRecipePrompt(
-    ingredient1Name,
-    ingredient2Name,
-    recipeExamples,
-    existingElements,
-    true,
-  );
-
-  for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
-    const geminiResponse = await callOpenRouter(
-      geminiPrompt,
-      MODEL_GEMINI_RECIPE,
-      "minimal",
+  const usages: ModelUsage[] = [];
+  try {
+    // First, try with Gemini Flash to get result + surprise indicator
+    const geminiPrompt = buildRecipePrompt(
+      ingredient1Name,
+      ingredient2Name,
+      recipeExamples,
+      existingElements,
+      true,
     );
-    const parsed = parseGeminiResponse(geminiResponse);
 
-    if (!parsed) {
-      console.log(`Failed to parse Gemini response, retrying...`);
-      continue;
-    }
+    for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
+      const { content: geminiResponse, usage: geminiUsage } = await callOpenRouter(
+        geminiPrompt,
+        MODEL_GEMINI_RECIPE,
+        "minimal",
+      );
+      usages.push(geminiUsage);
 
-    const trimmed = parsed.result.trim();
+      const parsed = parseGeminiResponse(geminiResponse);
 
-    // Accept "NO RESULT" regardless of length
-    if (trimmed.toUpperCase() === "NO RESULT") {
+      if (!parsed) {
+        console.log(`Failed to parse Gemini response, retrying...`);
+        continue;
+      }
+
+      const trimmed = parsed.result.trim();
+
+      // Accept "NO RESULT" regardless of length
+      if (trimmed.toUpperCase() === "NO RESULT") {
+        return trimmed;
+      }
+
+      // Retry if the result is too long
+      if (trimmed.length > MAX_ELEMENT_NAME_LENGTH) {
+        console.log(
+          `Generated name too long (${trimmed.length} chars): "${trimmed}", retrying...`,
+        );
+        continue;
+      }
+
+      // If surprising, get a second opinion from OpenAI
+      if (parsed.surprising) {
+        console.log(
+          `Gemini found surprising result "${trimmed}" for ${ingredient1Name} + ${ingredient2Name}, consulting OpenAI...`,
+        );
+        const openaiPrompt = buildRecipePrompt(
+          ingredient1Name,
+          ingredient2Name,
+          recipeExamples,
+          existingElements,
+          false,
+        );
+        const { content: openaiResult, usage: openaiUsage } = await callOpenRouter(
+          openaiPrompt,
+          MODEL_OPENAI,
+          "none",
+        );
+        usages.push(openaiUsage);
+        const openaiTrimmed = openaiResult.trim();
+
+        if (
+          openaiTrimmed.toUpperCase() !== "NO RESULT" &&
+          openaiTrimmed.length <= MAX_ELEMENT_NAME_LENGTH
+        ) {
+          console.log(`OpenAI suggested "${openaiTrimmed}" instead`);
+          return openaiTrimmed;
+        }
+      }
+
       return trimmed;
     }
 
-    // Retry if the result is too long
-    if (trimmed.length > MAX_ELEMENT_NAME_LENGTH) {
-      console.log(
-        `Generated name too long (${trimmed.length} chars): "${trimmed}", retrying...`,
-      );
-      continue;
-    }
-
-    // If surprising, get a second opinion from OpenAI
-    if (parsed.surprising) {
-      console.log(
-        `Gemini found surprising result "${trimmed}" for ${ingredient1Name} + ${ingredient2Name}, consulting OpenAI...`,
-      );
-      const openaiPrompt = buildRecipePrompt(
-        ingredient1Name,
-        ingredient2Name,
-        recipeExamples,
-        existingElements,
-        false,
-      );
-      const openaiResult = await callOpenRouter(
-        openaiPrompt,
-        MODEL_OPENAI,
-        "none",
-      );
-      const openaiTrimmed = openaiResult.trim();
-
-      if (
-        openaiTrimmed.toUpperCase() !== "NO RESULT" &&
-        openaiTrimmed.length <= MAX_ELEMENT_NAME_LENGTH
-      ) {
-        console.log(`OpenAI suggested "${openaiTrimmed}" instead`);
-        return openaiTrimmed;
-      }
-    }
-
-    return trimmed;
+    // After max retries, return "NO RESULT" as a fallback
+    console.log(
+      `Failed to generate valid recipe after ${MAX_GENERATION_RETRIES} attempts`,
+    );
+    return "NO RESULT";
+  } finally {
+    await recordAiCost(
+      ctx,
+      `Generate recipe: ${ingredient1Name} + ${ingredient2Name}`,
+      usages
+    );
   }
-
-  // After max retries, return "NO RESULT" as a fallback
-  console.log(
-    `Failed to generate valid recipe after ${MAX_GENERATION_RETRIES} attempts`,
-  );
-  return "NO RESULT";
 }
 
 export async function generateElementDescription(
+  ctx: AiLogCtx,
   elementName: string,
 ): Promise<string> {
-  const prompt = `You are writing witty one-line descriptions for elements in a Little Alchemy-like game where players combine elements to discover new ones.
+  const usages: ModelUsage[] = [];
+  try {
+    const prompt = `You are writing witty one-line descriptions for elements in a Little Alchemy-like game where players combine elements to discover new ones.
 
 Examples of the tone to match:
 Land: Anything on Earth's surface that isn't covered by water, but is owned by Woody Guthrie and YOU!
@@ -187,18 +290,29 @@ Write a witty one-line description for the element "${elementName}".
 
 Reply with ONLY the description text. No quotes, no explanations, no markdown.`;
 
-  const result = await callOpenRouter(prompt, MODEL_OPENAI, "low");
-  // Models sometimes wrap the description in quotes despite instructions
-  return result
-    .trim()
-    .replace(/^["']+|["']+$/g, "")
-    .trim();
+    const { content: result, usage } = await callOpenRouter(
+      prompt,
+      MODEL_OPENAI,
+      "low"
+    );
+    usages.push(usage);
+    // Models sometimes wrap the description in quotes despite instructions
+    return result
+      .trim()
+      .replace(/^["']+|["']+$/g, "")
+      .trim();
+  } finally {
+    await recordAiCost(ctx, `Generate description: ${elementName}`, usages);
+  }
 }
 
 export async function suggestRecipes(
+  ctx: AiLogCtx,
   allRecipes: { ingredient1: string; ingredient2: string; result: string }[],
 ): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
-  const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
+  const usages: ModelUsage[] = [];
+  try {
+    const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
   
   ${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
 
@@ -214,31 +328,42 @@ export async function suggestRecipes(
   No explanations, no markdown, just the recipes.
 `;
 
-  const result = await callOpenRouter(prompt, MODEL_OPENAI, "none");
-  return result
-    .split("\n")
-    .map((recipeLine) => {
-      if (!recipeLine.includes("+") || !recipeLine.includes("=")) {
-        return null;
-      }
-      const [ingredients, result] = recipeLine.split("=");
-      const [ingredient1, ingredient2] = ingredients.split("+");
+    const { content: result, usage } = await callOpenRouter(
+      prompt,
+      MODEL_OPENAI,
+      "none"
+    );
+    usages.push(usage);
+    return result
+      .split("\n")
+      .map((recipeLine) => {
+        if (!recipeLine.includes("+") || !recipeLine.includes("=")) {
+          return null;
+        }
+        const [ingredients, result] = recipeLine.split("=");
+        const [ingredient1, ingredient2] = ingredients.split("+");
 
-      return {
-        ingredient1: ingredient1.trim(),
-        ingredient2: ingredient2.trim(),
-        result: result.trim(),
-      };
-    })
-    .filter((recipe) => recipe !== null);
+        return {
+          ingredient1: ingredient1.trim(),
+          ingredient2: ingredient2.trim(),
+          result: result.trim(),
+        };
+      })
+      .filter((recipe) => recipe !== null);
+  } finally {
+    await recordAiCost(ctx, "Suggest recipes", usages);
+  }
 }
 
 export async function suggestRecipesForPairs(
+  ctx: AiLogCtx,
   pairs: { ingredient1: string; ingredient2: string }[],
   allRecipes: { ingredient1: string; ingredient2: string; result: string }[],
   existingElements: string[],
 ): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
-  const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
+  const usages: ModelUsage[] = [];
+  try {
+    const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
 
 ${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
 
@@ -260,61 +385,60 @@ Reply with one line per combination, in the same order as listed above, in the f
 No explanations, no markdown, just the recipes.
 `;
 
-  const response = await callOpenRouter(prompt, MODEL_OPENAI, "none");
+    const { content: response, usage } = await callOpenRouter(
+      prompt,
+      MODEL_OPENAI,
+      "none"
+    );
+    usages.push(usage);
 
-  // Only keep lines that match a requested pair, so hallucinated pairs are dropped
-  // and ingredient names are restored to their canonical casing.
-  const pairKey = (nameA: string, nameB: string) => {
-    const a = nameA.trim().toLowerCase();
-    const b = nameB.trim().toLowerCase();
-    return a < b ? `${a}|${b}` : `${b}|${a}`;
-  };
-  const requestedPairs = new Map(
-    pairs.map((pair) => [pairKey(pair.ingredient1, pair.ingredient2), pair]),
-  );
+    // Only keep lines that match a requested pair, so hallucinated pairs are dropped
+    // and ingredient names are restored to their canonical casing.
+    const pairKey = (nameA: string, nameB: string) => {
+      const a = nameA.trim().toLowerCase();
+      const b = nameB.trim().toLowerCase();
+      return a < b ? `${a}|${b}` : `${b}|${a}`;
+    };
+    const requestedPairs = new Map(
+      pairs.map((pair) => [pairKey(pair.ingredient1, pair.ingredient2), pair]),
+    );
 
-  const suggestions: { ingredient1: string; ingredient2: string; result: string }[] = [];
-  for (const line of response.split("\n")) {
-    if (!line.includes("+") || !line.includes("=")) continue;
-    const [ingredientsPart, resultPart] = line.split("=");
-    const [ingredient1, ingredient2] = ingredientsPart.split("+");
-    if (!ingredient1 || !ingredient2 || !resultPart) continue;
+    const suggestions: { ingredient1: string; ingredient2: string; result: string }[] = [];
+    for (const line of response.split("\n")) {
+      if (!line.includes("+") || !line.includes("=")) continue;
+      const [ingredientsPart, resultPart] = line.split("=");
+      const [ingredient1, ingredient2] = ingredientsPart.split("+");
+      if (!ingredient1 || !ingredient2 || !resultPart) continue;
 
-    const matchedKey = pairKey(ingredient1, ingredient2);
-    const requestedPair = requestedPairs.get(matchedKey);
-    if (!requestedPair) continue;
-    requestedPairs.delete(matchedKey); // dedupe if the model repeats a pair
+      const matchedKey = pairKey(ingredient1, ingredient2);
+      const requestedPair = requestedPairs.get(matchedKey);
+      if (!requestedPair) continue;
+      requestedPairs.delete(matchedKey); // dedupe if the model repeats a pair
 
-    const result = resultPart.trim();
-    if (!result || result.toUpperCase() === "NO RESULT") continue;
+      const result = resultPart.trim();
+      if (!result || result.toUpperCase() === "NO RESULT") continue;
 
-    suggestions.push({
-      ingredient1: requestedPair.ingredient1,
-      ingredient2: requestedPair.ingredient2,
-      result: capitalizeElementName(result),
-    });
+      suggestions.push({
+        ingredient1: requestedPair.ingredient1,
+        ingredient2: requestedPair.ingredient2,
+        result: capitalizeElementName(result),
+      });
+    }
+    return suggestions;
+  } finally {
+    await recordAiCost(
+      ctx,
+      `Suggest early-game recipes (${pairs.length} pairs)`,
+      usages
+    );
   }
-  return suggestions;
 }
-
-const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
-const MODEL_GEMINI_SVG = "google/gemini-3.5-flash-lite";
-const MODEL_OPENAI = "openai/gpt-5.6-terra";
-
-type ReasoningEffort =
-  | "none"
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh"
-  | "max";
 
 async function callOpenRouter(
   prompt: string,
   model: string,
   reasoningEffort: ReasoningEffort,
-): Promise<string> {
+): Promise<{ content: string; usage: ModelUsage }> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
     throw new Error("OPENROUTER_API_KEY environment variable is not set");
@@ -346,7 +470,24 @@ async function callOpenRouter(
   }
 
   const data = await response.json();
-  return data.choices[0]?.message?.content || "";
+  const usageData = data.usage ?? {};
+  const promptTokens = Number(usageData.prompt_tokens ?? 0);
+  const completionTokens = Number(usageData.completion_tokens ?? 0);
+  const totalTokens = Number(
+    usageData.total_tokens ?? promptTokens + completionTokens
+  );
+  const cost = Number(usageData.cost ?? 0);
+
+  return {
+    content: data.choices[0]?.message?.content || "",
+    usage: {
+      model: typeof data.model === "string" ? data.model : model,
+      promptTokens,
+      completionTokens,
+      totalTokens,
+      cost,
+    },
+  };
 }
 
 export function minifySVG(svg: string): string {
@@ -404,11 +545,21 @@ export const generateSVG = internalAction({
   args: {
     elementName: v.string(),
   },
-  handler: async (_ctx, args) => {
-    const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
+  handler: async (ctx, args) => {
+    const usages: ModelUsage[] = [];
+    try {
+      const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(prompt, MODEL_GEMINI_SVG, "minimal");
-    return extractSVG(content);
+      const { content, usage } = await callOpenRouter(
+        prompt,
+        MODEL_GEMINI_SVG,
+        "minimal"
+      );
+      usages.push(usage);
+      return extractSVG(content);
+    } finally {
+      await recordAiCost(ctx, `Generate SVG: ${args.elementName}`, usages);
+    }
   },
 });
 
@@ -418,8 +569,10 @@ export const regenerateSVG = internalAction({
     oldSVG: v.string(),
     feedback: v.string(),
   },
-  handler: async (_ctx, args) => {
-    const prompt = `You are updating an SVG illustration of "${args.elementName}". Here is the current SVG:
+  handler: async (ctx, args) => {
+    const usages: ModelUsage[] = [];
+    try {
+      const prompt = `You are updating an SVG illustration of "${args.elementName}". Here is the current SVG:
 
 ${args.oldSVG}
 
@@ -427,7 +580,19 @@ User feedback: ${args.feedback}
 
 Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
-    const content = await callOpenRouter(prompt, MODEL_GEMINI_SVG, "minimal");
-    return extractSVG(content);
+      const { content, usage } = await callOpenRouter(
+        prompt,
+        MODEL_GEMINI_SVG,
+        "minimal"
+      );
+      usages.push(usage);
+      return extractSVG(content);
+    } finally {
+      await recordAiCost(
+        ctx,
+        `Regenerate SVG: ${args.elementName} (${args.feedback.slice(0, 80)})`,
+        usages
+      );
+    }
   },
 });

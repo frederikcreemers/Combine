@@ -10,7 +10,9 @@
 
 import type * as admin from "../admin.js";
 import type * as ai from "../ai.js";
+import type * as aiCostLogs from "../aiCostLogs.js";
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
 import type * as elements from "../elements.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
@@ -27,7 +29,9 @@ import type {
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
   ai: typeof ai;
+  aiCostLogs: typeof aiCostLogs;
   auth: typeof auth;
+  crons: typeof crons;
   elements: typeof elements;
   game: typeof game;
   http: typeof http;

@@ -24,4 +24,21 @@ export default defineSchema({
   adminUsers: defineTable({
     userId: v.id("users"),
   }).index("by_user", ["userId"]),
+  // One row per AI generation operation (recipe, SVG, description, etc.).
+  // `models` aggregates token usage and cost per model used in that operation.
+  ai_cost_logs: defineTable({
+    description: v.string(),
+    models: v.array(
+      v.object({
+        model: v.string(),
+        promptTokens: v.number(),
+        completionTokens: v.number(),
+        totalTokens: v.number(),
+        cost: v.number(),
+        calls: v.number(),
+      })
+    ),
+    totalTokens: v.number(),
+    totalCost: v.number(),
+  }),
 });

@@ -227,7 +227,7 @@ export const discover = internalAction({
       element2: args.element2,
     });
     const existingElements = await ctx.runQuery(internal.elements.listElementNames, {});
-    const result = await generateRecipeAI(element1.name, element2.name, recipeExamplesText, existingElements);
+    const result = await generateRecipeAI(ctx, element1.name, element2.name, recipeExamplesText, existingElements);
 
     let resultName = result.trim();
 
@@ -265,7 +265,7 @@ export const discover = internalAction({
           elementName: resultName,
         }),
         // A missing description shouldn't block the discovery
-        generateElementDescription(resultName).catch((error) => {
+        generateElementDescription(ctx, resultName).catch((error) => {
           console.error(`Failed to generate description for ${resultName}:`, error);
           return undefined;
         }),

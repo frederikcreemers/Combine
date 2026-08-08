@@ -169,7 +169,7 @@ export const addElement = action({
     const providedDescription = args.description?.trim();
     const descriptionPromise = providedDescription
       ? Promise.resolve(providedDescription)
-      : generateElementDescription(capitalizedName).catch((error) => {
+      : generateElementDescription(ctx, capitalizedName).catch((error) => {
           console.error(`Failed to generate description for ${capitalizedName}:`, error);
           return undefined;
         });
@@ -363,7 +363,7 @@ export const generateDescriptions = action({
 
     return await Promise.all(
       elements.map(async (element) => {
-        const description = await generateElementDescription(element.name);
+        const description = await generateElementDescription(ctx, element.name);
         const svgUrl = await ctx.storage.getUrl(element.svgStorageId);
         return {
           elementId: element._id,
@@ -615,7 +615,7 @@ export const generateRecipe = action({
       element2: args.element2,
     });
     const existingElements = await ctx.runQuery(internal.elements.listElementNames, {});
-    const result = await generateRecipeAI(element1.name, element2.name, recipeExamplesText, existingElements);
+    const result = await generateRecipeAI(ctx, element1.name, element2.name, recipeExamplesText, existingElements);
 
     let resultName = result.trim();
 
@@ -640,7 +640,7 @@ export const generateRecipe = action({
         ctx.runAction(internal.ai.generateSVG, {
           elementName: resultName,
         }),
-        generateElementDescription(resultName).catch((error) => {
+        generateElementDescription(ctx, resultName).catch((error) => {
           console.error(`Failed to generate description for ${resultName}:`, error);
           return undefined;
         }),
@@ -669,7 +669,7 @@ export const suggestRecipes = action({
   handler: async (ctx, _args) => {
     await assertAdminAction(ctx);
     const allRecipes = await ctx.runQuery(internal.recipes.listAllRecipes)
-    const suggestedRecipes = await suggestRecipesAI(allRecipes);
+    const suggestedRecipes = await suggestRecipesAI(ctx, allRecipes);
     return suggestedRecipes;
   },
 });
@@ -696,6 +696,7 @@ export const suggestEarlyGameRecipes = action({
     const allRecipes = await ctx.runQuery(internal.recipes.listAllRecipes);
     const existingElements = await ctx.runQuery(internal.elements.listElementNames, {});
     const suggestions = await suggestRecipesForPairsAI(
+      ctx,
       candidatePairs,
       allRecipes,
       existingElements
@@ -762,4 +763,59 @@ export const acceptSuggestedRecipe = action({
     });
     return recipeId;
   }
+});
+
+export const listAiCostLogs = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await assertAdmin(ctx);
+    const limit = args.limit ?? 200;
+    const logs = await ctx.db
+      .query("ai_cost_logs")
+      .order("desc")
+      .take(limit);
+
+    const byModel = new Map<
+      string,
+      {
+        model: string;
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+        cost: number;
+        calls: number;
+      }
+    >();
+
+    let totalCost = 0;
+    let totalTokens = 0;
+    for (const log of logs) {
+      totalCost += log.totalCost;
+      totalTokens += log.totalTokens;
+      for (const modelUsage of log.models) {
+        const existing = byModel.get(modelUsage.model);
+        if (existing) {
+          existing.promptTokens += modelUsage.promptTokens;
+          existing.completionTokens += modelUsage.completionTokens;
+          existing.totalTokens += modelUsage.totalTokens;
+          existing.cost += modelUsage.cost;
+          existing.calls += modelUsage.calls;
+        } else {
+          byModel.set(modelUsage.model, { ...modelUsage });
+        }
+      }
+    }
+
+    return {
+      logs,
+      summary: {
+        operationCount: logs.length,
+        totalCost,
+        totalTokens,
+        byModel: [...byModel.values()].sort((a, b) => b.cost - a.cost),
+      },
+    };
+  },
 });
