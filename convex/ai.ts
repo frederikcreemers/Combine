@@ -179,7 +179,9 @@ Atmosphere: The layer of gases surrounding our planet that protects us from vari
 Planet: A star dancer.
 Computer: An electronic device that can both aid and hinder work.
 Boat: A craft that allows one to travel over water while still being at its mercy.
-
+Book: The afterlife of trees.
+Chainsaw: Mechanical saw with spinning teeth of DEATH.
+Heat: A quality of either increased temperature, feeling, social standing, or police presence.
 
 Write a witty one-line description for the element "${elementName}".
 
