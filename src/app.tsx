@@ -6,6 +6,8 @@ import { RecipesPage } from './admin/RecipesPage'
 import { DescriptionsPage } from './admin/DescriptionsPage'
 import { ElementPage } from './admin/ElementPage'
 import { EditRecipePage } from './admin/EditRecipePage'
+import { UsersPage } from './admin/UsersPage'
+import { UserPage } from './admin/UserPage'
 import { AdminGuard } from './admin/AdminGuard'
 import { GamePage } from './game/GamePage'
 import { LinkPage } from './game/LinkPage'
@@ -22,6 +24,10 @@ function ProtectedEditRecipePage({ id }: { id: string }) {
   return <AdminGuard><EditRecipePage id={id} /></AdminGuard>
 }
 
+function ProtectedUserPage({ id }: { id: string }) {
+  return <AdminGuard><UserPage id={id} /></AdminGuard>
+}
+
 export function App() {
   return (
     <LocationProvider>
@@ -32,6 +38,8 @@ export function App() {
         <Route path="/admin/elements" component={() => <ProtectedAdminPage><ElementsPage /></ProtectedAdminPage>} />
         <Route path="/admin/recipes" component={() => <ProtectedAdminPage><RecipesPage /></ProtectedAdminPage>} />
         <Route path="/admin/descriptions" component={() => <ProtectedAdminPage><DescriptionsPage /></ProtectedAdminPage>} />
+        <Route path="/admin/users" component={() => <ProtectedAdminPage><UsersPage /></ProtectedAdminPage>} />
+        <Route path="/admin/users/:id" component={ProtectedUserPage} />
         <Route path="/admin/elements/:id" component={ProtectedElementPage} />
         <Route path="/admin/recipes/:id" component={ProtectedEditRecipePage} />
       </Router>
