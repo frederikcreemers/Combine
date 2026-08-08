@@ -29,7 +29,7 @@ export function Toolbar({
           <span class={`text-xs font-semibold leading-none mt-0.5 ${energy === 0 ? 'text-red-300' : 'text-amber-100'}`}>
             {energy}
           </span>
-          <div class="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 w-56">
+          <div class="absolute left-full top-0 ml-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 w-56">
             <div class="font-semibold mb-1">Energy</div>
             <div class="text-gray-300 leading-snug">
               Discovering a previously unknown element costs 5 ⚡, discovering a new recipe for an existing element costs 1 ⚡.
