@@ -144,6 +144,7 @@ export const addElement = action({
   args: {
     name: v.string(),
     SVG: v.string(),
+    description: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ id: string; name: string }> => {
     await assertAdminAction(ctx);
@@ -165,10 +166,13 @@ export const addElement = action({
 
     let svg = args.SVG;
 
-    const descriptionPromise = generateElementDescription(capitalizedName).catch((error) => {
-      console.error(`Failed to generate description for ${capitalizedName}:`, error);
-      return undefined;
-    });
+    const providedDescription = args.description?.trim();
+    const descriptionPromise = providedDescription
+      ? Promise.resolve(providedDescription)
+      : generateElementDescription(capitalizedName).catch((error) => {
+          console.error(`Failed to generate description for ${capitalizedName}:`, error);
+          return undefined;
+        });
 
     // If SVG is empty, generate one using the AI action
     if (!svg || svg.trim() === "") {
@@ -720,6 +724,7 @@ export const acceptSuggestedRecipe = action({
     ingredient1: v.string(),
     ingredient2: v.string(),
     result: v.string(),
+    description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await assertAdminAction(ctx);
@@ -729,8 +734,9 @@ export const acceptSuggestedRecipe = action({
     const existingElement2 = await ctx.runQuery(internal.elements.getElementByName, {
       name: args.ingredient2,
     });
+    const capitalizedResult = capitalizeElementName(args.result);
     const existingResult = await ctx.runQuery(internal.elements.getElementByName, {
-      name: args.result,
+      name: capitalizedResult,
     });
 
     if (!existingElement1 || !existingElement2) {
@@ -740,8 +746,9 @@ export const acceptSuggestedRecipe = action({
     let resultId: Id<"elements">;
     if (!existingResult) {
       const addedElement = await ctx.runAction(api.admin.addElement, {
-        name: args.result,
+        name: capitalizedResult,
         SVG: "",
+        description: args.description,
       });
       resultId = addedElement.id as Id<"elements">;
     } else {
