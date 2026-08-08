@@ -18,10 +18,7 @@ export function Toolbar({
   return (
     <div class="w-12 bg-red-950 flex flex-col items-center py-2 gap-2">
       {energy !== undefined && energy !== null && (
-        <div
-          class="w-10 flex flex-col items-center justify-center rounded-lg bg-red-900 py-1 group relative"
-          title={`Energy: ${energy} / ${maxEnergy}`}
-        >
+        <div class="w-10 flex flex-col items-center justify-center rounded-lg bg-red-900 py-1 group relative">
           <svg
             viewBox="0 0 24 24"
             fill="currentColor"
@@ -32,9 +29,15 @@ export function Toolbar({
           <span class={`text-xs font-semibold leading-none mt-0.5 ${energy === 0 ? 'text-red-300' : 'text-amber-100'}`}>
             {energy}
           </span>
-          <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-            Energy {energy}/{maxEnergy}
-          </span>
+          <div class="absolute left-full ml-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 w-56">
+            <div class="font-semibold mb-1">Energy</div>
+            <div class="text-gray-300 leading-snug">
+              Discovering a previously unknown element costs 5 ⚡, discovering a new recipe for an existing element costs 1 ⚡.
+            </div>
+            <div class="text-gray-400 mt-1.5">
+              {energy}/{maxEnergy} remaining today
+            </div>
+          </div>
         </div>
       )}
 
