@@ -2,6 +2,95 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
 const MIN_EXAMPLES = 30;
+const INITIAL_ELEMENT_NAMES = ["Earth", "Air", "Water", "Fire", "Time"];
+
+function unorderedPairKey(idA: string, idB: string): string {
+  return idA < idB ? `${idA}|${idB}` : `${idB}|${idA}`;
+}
+
+// Finds combinations players are likely to try early in the game but that have
+// no recipe yet. Computes each element's "tier" (the shortest crafting depth
+// starting from the initial elements), then returns the unrecipe'd pairs of
+// reachable elements with the lowest tiers.
+export const getEarlyGameCandidatePairs = internalQuery({
+  args: {
+    maxPairs: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const allElements = await ctx.db.query("elements").collect();
+    const allRecipes = await ctx.db.query("recipes").collect();
+
+    // An element's tier is 0 for initial elements, otherwise
+    // min over recipes of (max(tier(ingredient1), tier(ingredient2)) + 1).
+    // Iterate to a fixpoint; unreachable elements never get a tier.
+    const tierByElementId = new Map<string, number>();
+    for (const element of allElements) {
+      if (INITIAL_ELEMENT_NAMES.includes(element.name)) {
+        tierByElementId.set(element._id, 0);
+      }
+    }
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const recipe of allRecipes) {
+        const tier1 = tierByElementId.get(recipe.ingredient1);
+        const tier2 = tierByElementId.get(recipe.ingredient2);
+        if (tier1 === undefined || tier2 === undefined) continue;
+        const resultTier = Math.max(tier1, tier2) + 1;
+        const currentTier = tierByElementId.get(recipe.result);
+        if (currentTier === undefined || resultTier < currentTier) {
+          tierByElementId.set(recipe.result, resultTier);
+          changed = true;
+        }
+      }
+    }
+
+    const pairsWithRecipe = new Set(
+      allRecipes.map((recipe) => unorderedPairKey(recipe.ingredient1, recipe.ingredient2))
+    );
+
+    const reachableElements = allElements
+      .filter((element) => tierByElementId.has(element._id))
+      .sort(
+        (a, b) => tierByElementId.get(a._id)! - tierByElementId.get(b._id)!
+      );
+
+    const candidates: {
+      ingredient1: string;
+      ingredient2: string;
+      // The tier at which a player can first attempt this combination
+      pairTier: number;
+      tierSum: number;
+    }[] = [];
+    for (let i = 0; i < reachableElements.length; i++) {
+      // j starts at i so self-combinations (e.g. Water + Water) are included
+      for (let j = i; j < reachableElements.length; j++) {
+        const element1 = reachableElements[i];
+        const element2 = reachableElements[j];
+        if (pairsWithRecipe.has(unorderedPairKey(element1._id, element2._id))) {
+          continue;
+        }
+        const tier1 = tierByElementId.get(element1._id)!;
+        const tier2 = tierByElementId.get(element2._id)!;
+        candidates.push({
+          ingredient1: element1.name,
+          ingredient2: element2.name,
+          pairTier: Math.max(tier1, tier2),
+          tierSum: tier1 + tier2,
+        });
+      }
+    }
+
+    candidates.sort((a, b) => a.pairTier - b.pairTier || a.tierSum - b.tierSum);
+    return candidates
+      .slice(0, args.maxPairs)
+      .map(({ ingredient1, ingredient2, pairTier }) => ({
+        ingredient1,
+        ingredient2,
+        pairTier,
+      }));
+  },
+});
 
 export const getRecipeExamplesText = internalQuery({
   args: {

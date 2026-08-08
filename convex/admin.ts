@@ -3,7 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { generateRecipe as generateRecipeAI, generateElementDescription, capitalizeElementName } from "./ai";
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { suggestRecipes as suggestRecipesAI } from "./ai";
+import { suggestRecipes as suggestRecipesAI, suggestRecipesForPairs as suggestRecipesForPairsAI } from "./ai";
 import type { Doc, Id } from "./_generated/dataModel";
 import { readSvg, storeSvg, withSvgUrl } from "./elements";
 // Helper to check if user is admin (for use in queries/mutations)
@@ -667,6 +667,49 @@ export const suggestRecipes = action({
     const allRecipes = await ctx.runQuery(internal.recipes.listAllRecipes)
     const suggestedRecipes = await suggestRecipesAI(allRecipes);
     return suggestedRecipes;
+  },
+});
+
+// Suggests recipes for the missing combinations that players will encounter
+// earliest, expanding outward from the initial elements through the shortest
+// paths in the recipe graph.
+export const suggestEarlyGameRecipes = action({
+  args: {},
+  handler: async (
+    ctx
+  ): Promise<
+    { ingredient1: string; ingredient2: string; result: string; pairTier: number }[]
+  > => {
+    await assertAdminAction(ctx);
+    const candidatePairs = await ctx.runQuery(
+      internal.recipes.getEarlyGameCandidatePairs,
+      { maxPairs: 40 }
+    );
+    if (candidatePairs.length === 0) {
+      return [];
+    }
+
+    const allRecipes = await ctx.runQuery(internal.recipes.listAllRecipes);
+    const existingElements = await ctx.runQuery(internal.elements.listElementNames, {});
+    const suggestions = await suggestRecipesForPairsAI(
+      candidatePairs,
+      allRecipes,
+      existingElements
+    );
+
+    const tierByPair = new Map(
+      candidatePairs.map((pair) => [
+        [pair.ingredient1, pair.ingredient2].sort().join("|"),
+        pair.pairTier,
+      ])
+    );
+    return suggestions.map((suggestion) => ({
+      ...suggestion,
+      pairTier:
+        tierByPair.get(
+          [suggestion.ingredient1, suggestion.ingredient2].sort().join("|")
+        ) ?? 0,
+    }));
   },
 });
 

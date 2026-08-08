@@ -233,6 +233,70 @@ export async function suggestRecipes(
     .filter((recipe) => recipe !== null);
 }
 
+export async function suggestRecipesForPairs(
+  pairs: { ingredient1: string; ingredient2: string }[],
+  allRecipes: { ingredient1: string; ingredient2: string; result: string }[],
+  existingElements: string[],
+): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
+  const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
+
+${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
+
+All existing elements in the game:
+${existingElements.join(", ")}
+
+The following combinations have no recipe yet, but players are likely to try them early in the game. For EACH combination, determine what the result should be:
+
+${pairs.map((pair) => `${pair.ingredient1} + ${pair.ingredient2}`).join("\n")}
+
+Guidelines:
+- PREFER reusing an existing element from the list above when it makes sense - this keeps the game cohesive.
+- When introducing new elements, prioritize elements being fun to build upon, over being completely logical.
+- Also consider combinations that might be a little bit whimsical, like sky + cheese = moon.
+- Use "NO RESULT" as the result if the two elements really should not be combinable, but prefer giving a result: these are combinations players will actually try, and dead ends are frustrating.
+- Keep element names short (under ${MAX_ELEMENT_NAME_LENGTH} characters).
+
+Reply with one line per combination, in the same order as listed above, in the format: "ingredient1 + ingredient2 = result"
+No explanations, no markdown, just the recipes.
+`;
+
+  const response = await callOpenRouter(prompt, MODEL_OPENAI, "none");
+
+  // Only keep lines that match a requested pair, so hallucinated pairs are dropped
+  // and ingredient names are restored to their canonical casing.
+  const pairKey = (nameA: string, nameB: string) => {
+    const a = nameA.trim().toLowerCase();
+    const b = nameB.trim().toLowerCase();
+    return a < b ? `${a}|${b}` : `${b}|${a}`;
+  };
+  const requestedPairs = new Map(
+    pairs.map((pair) => [pairKey(pair.ingredient1, pair.ingredient2), pair]),
+  );
+
+  const suggestions: { ingredient1: string; ingredient2: string; result: string }[] = [];
+  for (const line of response.split("\n")) {
+    if (!line.includes("+") || !line.includes("=")) continue;
+    const [ingredientsPart, resultPart] = line.split("=");
+    const [ingredient1, ingredient2] = ingredientsPart.split("+");
+    if (!ingredient1 || !ingredient2 || !resultPart) continue;
+
+    const matchedKey = pairKey(ingredient1, ingredient2);
+    const requestedPair = requestedPairs.get(matchedKey);
+    if (!requestedPair) continue;
+    requestedPairs.delete(matchedKey); // dedupe if the model repeats a pair
+
+    const result = resultPart.trim();
+    if (!result || result.toUpperCase() === "NO RESULT") continue;
+
+    suggestions.push({
+      ingredient1: requestedPair.ingredient1,
+      ingredient2: requestedPair.ingredient2,
+      result: capitalizeElementName(result),
+    });
+  }
+  return suggestions;
+}
+
 const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
 const MODEL_GEMINI_SVG = "google/gemini-3.5-flash-lite";
 const MODEL_OPENAI = "openai/gpt-5.6-terra";
