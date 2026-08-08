@@ -3,7 +3,10 @@ import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { generateRecipe as generateRecipeAI, generateElementDescription, capitalizeElementName } from "./ai";
-import { rateLimiter } from "./rateLimits";
+import {
+  ENERGY_COST_EXISTING_ELEMENT,
+  ENERGY_COST_NEW_ELEMENT,
+} from "./energy";
 import type { Id } from "./_generated/dataModel";
 import { storeSvg, withSvgUrl } from "./elements";
 
@@ -379,12 +382,13 @@ export const combine = action({
       return { requiresLogin: true };
     }
 
-    // Check rate limit before generating new recipe
-    const rateLimitStatus = await rateLimiter.limit(ctx, "newElements", {
-      key: userId,
+    // Energy gate: need at least 1 energy to attempt a discovery.
+    // Admins bypass the gate but still spend energy after a successful discovery.
+    const energyStatus = await ctx.runMutation(internal.energy.getOrResetEnergy, {
+      userId,
     });
-
-    if (!rateLimitStatus.ok && !(await ctx.runQuery(api.users.isAdmin)))   {
+    const isAdmin = await ctx.runQuery(api.users.isAdmin);
+    if (energyStatus.energy <= 0 && !isAdmin) {
       return { rateLimitExceeded: true };
     }
 
@@ -398,6 +402,14 @@ export const combine = action({
     if (!discoverResult) {
       return null;
     }
+
+    const energyCost = discoverResult.elementDiscovered
+      ? ENERGY_COST_NEW_ELEMENT
+      : ENERGY_COST_EXISTING_ELEMENT;
+    await ctx.runMutation(internal.energy.consumeEnergy, {
+      userId,
+      amount: energyCost,
+    });
 
     return {
       element: discoverResult.element,

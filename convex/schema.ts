@@ -24,6 +24,13 @@ export default defineSchema({
   adminUsers: defineTable({
     userId: v.id("users"),
   }).index("by_user", ["userId"]),
+  // Per-user daily energy for discovering new recipes / elements.
+  // Resets to MAX_ENERGY when dayStart is before today's midnight UTC.
+  userEnergy: defineTable({
+    userId: v.id("users"),
+    energy: v.number(),
+    dayStart: v.number(),
+  }).index("by_user", ["userId"]),
   // One row per AI generation operation (recipe, SVG, description, etc.).
   // `models` aggregates token usage and cost per model used in that operation.
   ai_cost_logs: defineTable({

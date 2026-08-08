@@ -7,17 +7,19 @@ type RateLimitModalProps = {
 
 export function RateLimitModal({ isOpen, onClose }: RateLimitModalProps) {
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Daily Limit Reached">
+    <Modal isOpen={isOpen} onClose={onClose} title="Out of Energy">
       <div class="space-y-4">
         <p class="text-gray-700">
-          You've reached your daily limit for discovering new recipes.
+          You've used all of today's Energy, so you can't discover new recipes right now.
         </p>
         <p class="text-gray-700">
-          This is a hobby project, and I'm trying to keep AI API costs under control. 
-          Your limit will reset at midnight UTC.
+          You start each day with 30 Energy. Discovering a new recipe for an existing
+          element costs 1 Energy; discovering a completely new element costs 5.
+          Energy resets at midnight UTC.
         </p>
         <p class="text-gray-700">
-          If there's enough demand, I'm considering adding an option to pay for extra quota.
+          This is a hobby project, and Energy helps keep AI API costs under control.
+          If there's enough demand, I'm considering adding an option to pay for extra Energy.
         </p>
         <div class="pt-2 border-t border-gray-200">
           <p class="text-sm text-gray-600">

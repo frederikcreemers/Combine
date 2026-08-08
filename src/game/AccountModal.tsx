@@ -12,6 +12,7 @@ type AccountModalProps = {
 
 export function AccountModal({ isOpen, onClose, onLoginClick }: AccountModalProps) {
   const currentUser = useQuery(api.users.getCurrentUser)
+  const energyStatus = useQuery(api.energy.getEnergy)
   const clearProgress = useMutation(api.game.clearProgress)
   const { signOut } = useAuthActions()
   const [isClearing, setIsClearing] = useState(false)
@@ -75,6 +76,23 @@ export function AccountModal({ isOpen, onClose, onLoginClick }: AccountModalProp
             </button>
           </div>
         ) : null}
+
+        <hr class="border-gray-200" />
+
+        {energyStatus && (
+          <div>
+            <p class="text-sm text-gray-700">
+              Energy:{' '}
+              <strong>
+                {energyStatus.energy} / {energyStatus.maxEnergy}
+              </strong>
+            </p>
+            <p class="text-sm text-gray-500 mt-1">
+              New recipes for existing elements cost 1 Energy; brand-new elements cost 5.
+              Resets at midnight UTC.
+            </p>
+          </div>
+        )}
 
         <hr class="border-gray-200" />
 

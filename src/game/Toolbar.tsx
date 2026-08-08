@@ -3,11 +3,41 @@ type ToolbarProps = {
   onAccountClick: () => void
   onDiscoveriesClick: () => void
   onAboutClick: () => void
+  energy?: number | null
+  maxEnergy?: number
 }
 
-export function Toolbar({ onClearCanvas, onAccountClick, onDiscoveriesClick, onAboutClick }: ToolbarProps) {
+export function Toolbar({
+  onClearCanvas,
+  onAccountClick,
+  onDiscoveriesClick,
+  onAboutClick,
+  energy,
+  maxEnergy = 30,
+}: ToolbarProps) {
   return (
     <div class="w-12 bg-red-950 flex flex-col items-center py-2 gap-2">
+      {energy !== undefined && energy !== null && (
+        <div
+          class="w-10 flex flex-col items-center justify-center rounded-lg bg-red-900 py-1 group relative"
+          title={`Energy: ${energy} / ${maxEnergy}`}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            class={`w-5 h-5 ${energy === 0 ? 'text-red-400' : 'text-amber-300'}`}
+          >
+            <path d="M13 2L4.5 13.5H11L10 22L19.5 9.5H13L13 2Z" />
+          </svg>
+          <span class={`text-xs font-semibold leading-none mt-0.5 ${energy === 0 ? 'text-red-300' : 'text-amber-100'}`}>
+            {energy}
+          </span>
+          <span class="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            Energy {energy}/{maxEnergy}
+          </span>
+        </div>
+      )}
+
       <button
         onClick={onClearCanvas}
         class="w-10 h-10 flex items-center justify-center rounded-lg bg-red-900 hover:bg-red-800 transition-colors group relative"

@@ -14,9 +14,9 @@ import type * as aiCostLogs from "../aiCostLogs.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as elements from "../elements.js";
+import type * as energy from "../energy.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
-import type * as rateLimits from "../rateLimits.js";
 import type * as recipes from "../recipes.js";
 import type * as users from "../users.js";
 
@@ -33,9 +33,9 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   crons: typeof crons;
   elements: typeof elements;
+  energy: typeof energy;
   game: typeof game;
   http: typeof http;
-  rateLimits: typeof rateLimits;
   recipes: typeof recipes;
   users: typeof users;
 }>;

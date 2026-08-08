@@ -1,4 +1,4 @@
-import { useConvexAuth, useAction, useMutation } from 'convex/react'
+import { useConvexAuth, useAction, useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { useEffect, useState, useCallback } from 'preact/hooks'
 import { api } from '../../convex/_generated/api'
@@ -31,6 +31,7 @@ export function GamePage() {
   const { signIn, signOut } = useAuthActions()
   const unlockInitialElements = useMutation(api.game.unlockInitialElements)
   const combineAction = useAction(api.game.combine)
+  const energyStatus = useQuery(api.energy.getEnergy)
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([])
   const [newElementToShow, setNewElementToShow] = useState<NewElement | null>(null)
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
@@ -162,6 +163,8 @@ export function GamePage() {
         onAccountClick={() => setIsAccountModalOpen(true)}
         onDiscoveriesClick={() => setIsDiscoveriesModalOpen(true)}
         onAboutClick={() => setIsAboutModalOpen(true)}
+        energy={energyStatus?.energy}
+        maxEnergy={energyStatus?.maxEnergy}
       />
       <Canvas
         elements={canvasElements}
