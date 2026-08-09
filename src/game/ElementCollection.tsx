@@ -99,14 +99,14 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
 
   if (unlockedElements === undefined) {
     return (
-      <div class="w-[15%] min-w-[200px] bg-white border-l border-gray-300 p-4">
+      <div class="w-1/3 md:w-[15%] md:min-w-[200px] bg-white border-l border-gray-300 p-4">
         <p class="text-gray-500">Loading...</p>
       </div>
     )
   }
 
   return (
-    <div class="w-[15%] min-w-[200px] bg-white border-l border-gray-300 flex flex-col">
+    <div class="w-1/3 md:w-[15%] md:min-w-[200px] bg-white border-l border-gray-300 flex flex-col">
       <div class="p-4 pb-2">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Elements</h2>
       </div>

@@ -157,24 +157,41 @@ export function GamePage() {
   }
 
   return (
-    <div class="h-screen flex">
-      <Toolbar
-        onClearCanvas={handleClearCanvas}
-        onAccountClick={() => setIsAccountModalOpen(true)}
-        onDiscoveriesClick={() => setIsDiscoveriesModalOpen(true)}
-        onAboutClick={() => setIsAboutModalOpen(true)}
-        energy={energyStatus?.energy}
-        maxEnergy={energyStatus?.maxEnergy}
-      />
-      <Canvas
-        elements={canvasElements}
-        onAddElement={handleAddElement}
-        onMoveElement={handleMoveElement}
-        onRemoveElement={handleRemoveElement}
-        onBringToFront={handleBringToFront}
-        onCombine={handleCombine}
-      />
-      <ElementCollection />
+    <div class="h-screen flex flex-col">
+      {/* Main content area: canvas + elements side by side */}
+      <div class="flex-1 flex min-h-0">
+        {/* Toolbar: hidden on mobile, shown on desktop */}
+        <div class="hidden md:block shrink-0">
+          <Toolbar
+            onClearCanvas={handleClearCanvas}
+            onAccountClick={() => setIsAccountModalOpen(true)}
+            onDiscoveriesClick={() => setIsDiscoveriesModalOpen(true)}
+            onAboutClick={() => setIsAboutModalOpen(true)}
+            energy={energyStatus?.energy}
+            maxEnergy={energyStatus?.maxEnergy}
+          />
+        </div>
+        <Canvas
+          elements={canvasElements}
+          onAddElement={handleAddElement}
+          onMoveElement={handleMoveElement}
+          onRemoveElement={handleRemoveElement}
+          onBringToFront={handleBringToFront}
+          onCombine={handleCombine}
+        />
+        <ElementCollection />
+      </div>
+      {/* Toolbar: shown on mobile at bottom, hidden on desktop */}
+      <div class="md:hidden shrink-0">
+        <Toolbar
+          onClearCanvas={handleClearCanvas}
+          onAccountClick={() => setIsAccountModalOpen(true)}
+          onDiscoveriesClick={() => setIsDiscoveriesModalOpen(true)}
+          onAboutClick={() => setIsAboutModalOpen(true)}
+          energy={energyStatus?.energy}
+          maxEnergy={energyStatus?.maxEnergy}
+        />
+      </div>
       {newElementToShow && (
         <NewElementDisplay
           element={newElementToShow}
