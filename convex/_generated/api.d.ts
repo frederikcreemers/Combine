@@ -18,6 +18,7 @@ import type * as energy from "../energy.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
 import type * as recipes from "../recipes.js";
+import type * as svgMigration from "../svgMigration.js";
 import type * as users from "../users.js";
 
 import type {
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   game: typeof game;
   http: typeof http;
   recipes: typeof recipes;
+  svgMigration: typeof svgMigration;
   users: typeof users;
 }>;
 
