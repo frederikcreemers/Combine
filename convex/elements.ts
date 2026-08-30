@@ -1,5 +1,6 @@
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
+import { optimize } from "svgo/browser";
 import type { ActionCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 
@@ -21,13 +22,28 @@ export async function storeSvg(
   ctx: Pick<ActionCtx, "storage">,
   svg: string,
 ): Promise<Id<"_storage">> {
+  const optimizedSvg = optimizeSvg(svg);
+  return await ctx.storage.store(
+    new Blob([optimizedSvg], { type: "image/svg+xml" }),
+  );
+}
+
+export function optimizeSvg(svg: string): string {
   const trimmedSvg = svg.trim();
   if (!trimmedSvg) {
     throw new Error("SVG cannot be empty");
   }
-  return await ctx.storage.store(
-    new Blob([trimmedSvg], { type: "image/svg+xml" }),
-  );
+
+  const optimizedSvg = optimize(trimmedSvg, { multipass: true }).data;
+  if (!/^<svg(?:\s|>)/.test(optimizedSvg)) {
+    throw new Error("SVG must have an <svg> root element");
+  }
+
+  const encoder = new TextEncoder();
+  return encoder.encode(optimizedSvg).byteLength <
+    encoder.encode(trimmedSvg).byteLength
+    ? optimizedSvg
+    : trimmedSvg;
 }
 
 export async function readSvg(
