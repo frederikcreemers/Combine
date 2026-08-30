@@ -25,8 +25,23 @@ const ELEMENT_HEIGHT = 140
 type CombiningState = {
   x: number
   y: number
-  showSwirl: boolean
+  showSparkles: boolean
 }
+
+const GENERATION_SPARKLES = [
+  { x: 50, y: 4, size: 26, color: '#fde047', delay: 0, duration: 1.4 },
+  { x: 82, y: 16, size: 18, color: '#fb923c', delay: 0.45, duration: 1.7 },
+  { x: 96, y: 48, size: 24, color: '#f9a8d4', delay: 0.15, duration: 1.5 },
+  { x: 84, y: 81, size: 16, color: '#fde68a', delay: 0.8, duration: 1.8 },
+  { x: 52, y: 96, size: 22, color: '#fb7185', delay: 0.3, duration: 1.6 },
+  { x: 18, y: 84, size: 18, color: '#fdba74', delay: 1.05, duration: 1.9 },
+  { x: 4, y: 52, size: 24, color: '#fef08a', delay: 0.6, duration: 1.5 },
+  { x: 17, y: 18, size: 14, color: '#f472b6', delay: 0.95, duration: 1.7 },
+  { x: 50, y: 26, size: 14, color: '#fed7aa', delay: 0.7, duration: 1.4 },
+  { x: 74, y: 50, size: 12, color: '#fde047', delay: 1.2, duration: 1.8 },
+  { x: 50, y: 73, size: 16, color: '#f9a8d4', delay: 0.2, duration: 1.9 },
+  { x: 27, y: 50, size: 11, color: '#fb923c', delay: 0.5, duration: 1.6 },
+]
 
 export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onBringToFront, onCombine }: CanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -35,7 +50,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
   const [shakingElementId, setShakingElementId] = useState<string | null>(null)
   const [combiningState, setCombiningState] = useState<CombiningState | null>(null)
   const dragOffset = useRef({ x: 0, y: 0 })
-  const swirlTimeoutRef = useRef<number | null>(null)
+  const sparkleTimeoutRef = useRef<number | null>(null)
 
   const findElementAtPosition = (x: number, y: number, excludeId?: string): CanvasElement | null => {
     for (const el of elements) {
@@ -65,16 +80,16 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
   }
 
   const startCombining = (x: number, y: number) => {
-    setCombiningState({ x, y, showSwirl: false })
-    swirlTimeoutRef.current = window.setTimeout(() => {
-      setCombiningState((prev) => prev ? { ...prev, showSwirl: true } : null)
+    setCombiningState({ x, y, showSparkles: false })
+    sparkleTimeoutRef.current = window.setTimeout(() => {
+      setCombiningState((prev) => prev ? { ...prev, showSparkles: true } : null)
     }, 300)
   }
 
   const stopCombining = () => {
-    if (swirlTimeoutRef.current) {
-      clearTimeout(swirlTimeoutRef.current)
-      swirlTimeoutRef.current = null
+    if (sparkleTimeoutRef.current) {
+      clearTimeout(sparkleTimeoutRef.current)
+      sparkleTimeoutRef.current = null
     }
     setCombiningState(null)
   }
@@ -210,16 +225,36 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
         .shake {
           animation: shake 0.5s ease-in-out;
         }
-        @keyframes swirl {
-          0% { transform: translate(-50%, -50%) rotate(0deg); }
-          100% { transform: translate(-50%, -50%) rotate(360deg); }
+        @keyframes sparkle-orbit {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
-        @keyframes swirl-fade-in {
-          0% { opacity: 0; transform: translate(-50%, -50%) rotate(0deg) scale(0.5); }
-          100% { opacity: 1; transform: translate(-50%, -50%) rotate(180deg) scale(1); }
+        @keyframes sparkle-field-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
-        .magical-swirl {
-          animation: swirl-fade-in 0.3s ease-out forwards, swirl 1.5s linear 0.3s infinite;
+        @keyframes sparkle-twinkle {
+          0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(-20deg); }
+          35% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(8deg); }
+          60% { opacity: 0.75; transform: translate(-50%, -50%) scale(0.72) rotate(20deg); }
+        }
+        .magical-sparkles {
+          animation: sparkle-field-in 0.3s ease-out forwards, sparkle-orbit 4.5s linear infinite;
+          transform-origin: center;
+        }
+        .generation-sparkle {
+          animation-name: sparkle-twinkle;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+          filter: drop-shadow(0 0 5px currentColor);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .magical-sparkles { animation: sparkle-field-in 0.3s ease-out forwards; }
+          .generation-sparkle {
+            animation: none;
+            opacity: 0.85;
+            transform: translate(-50%, -50%);
+          }
         }
       `}</style>
       {elements.length === 0 && <div class="absolute top-3 right-3 pointer-events-none text-orange-400 text-sm">
@@ -254,26 +289,30 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
           </div>
         )
       })}
-      {combiningState?.showSwirl && (
+      {combiningState?.showSparkles && (
         <div
-          class="magical-swirl absolute pointer-events-none z-50"
+          class="magical-sparkles absolute pointer-events-none z-50 w-32 h-32"
           style={{
-            left: `${combiningState.x}px`,
-            top: `${combiningState.y}px`,
+            left: `${combiningState.x - 64}px`,
+            top: `${combiningState.y - 64}px`,
           }}
         >
-          <svg width="120" height="120" viewBox="0 0 120 120">
-            <defs>
-              <linearGradient id="swirl-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style={{ stopColor: '#fbbf24', stopOpacity: 1 }} />
-                <stop offset="50%" style={{ stopColor: '#f97316', stopOpacity: 1 }} />
-                <stop offset="100%" style={{ stopColor: '#ec4899', stopOpacity: 1 }} />
-              </linearGradient>
-            </defs>
-            <circle cx="60" cy="60" r="50" fill="none" stroke="url(#swirl-gradient)" stroke-width="4" stroke-dasharray="20 10" stroke-linecap="round" />
-            <circle cx="60" cy="60" r="35" fill="none" stroke="url(#swirl-gradient)" stroke-width="3" stroke-dasharray="15 8" stroke-linecap="round" opacity="0.7" />
-            <circle cx="60" cy="60" r="20" fill="none" stroke="url(#swirl-gradient)" stroke-width="2" stroke-dasharray="10 5" stroke-linecap="round" opacity="0.5" />
-          </svg>
+          {GENERATION_SPARKLES.map((sparkle, index) => (
+            <span
+              key={index}
+              class="generation-sparkle absolute font-bold select-none"
+              style={{
+                left: `${sparkle.x}%`,
+                top: `${sparkle.y}%`,
+                color: sparkle.color,
+                fontSize: `${sparkle.size}px`,
+                animationDelay: `${sparkle.delay}s`,
+                animationDuration: `${sparkle.duration}s`,
+              }}
+            >
+              ✦
+            </span>
+          ))}
         </div>
       )}
     </div>
