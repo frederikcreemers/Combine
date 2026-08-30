@@ -25,8 +25,9 @@ const RECIPE_POLICY = `Use this decision process for every pair:
 Every pair has exactly one result. Each result is a non-empty element name from 1 to ${MAX_ELEMENT_NAME_LENGTH} characters.`;
 
 const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
-const MODEL_GEMINI_SVG = "google/gemini-3.5-flash-lite";
+const MODEL_SVG = "openai/gpt-5.6-luna";
 const MODEL_OPENAI = "openai/gpt-5.6-terra";
+const SVG_TEXT_POLICY = `Depict the concept visually rather than spelling out or labeling the requested element. Do not add text merely as decoration or as a shortcut for conveying the concept. Include text only when the wording is an intrinsic, recognizable, and important part of the depicted subject, such as a proper name or title on an object, or essential wording on a sign.`;
 
 type ReasoningEffort =
   | "none"
@@ -657,12 +658,12 @@ export const generateSVG = internalAction({
   handler: async (ctx, args) => {
     const usages: ModelUsage[] = [];
     try {
-      const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
+      const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. ${SVG_TEXT_POLICY} Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
       const { content, usage } = await callOpenRouter(
         prompt,
-        MODEL_GEMINI_SVG,
-        "minimal"
+        MODEL_SVG,
+        "low"
       );
       usages.push(usage);
       return extractSVG(content);
@@ -687,12 +688,12 @@ ${args.oldSVG}
 
 User feedback: ${args.feedback}
 
-Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
+Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. ${SVG_TEXT_POLICY} Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
 
       const { content, usage } = await callOpenRouter(
         prompt,
-        MODEL_GEMINI_SVG,
-        "minimal"
+        MODEL_SVG,
+        "low"
       );
       usages.push(usage);
       return extractSVG(content);
