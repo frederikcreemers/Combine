@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useRef } from 'preact/hooks'
 import Fuse from 'fuse.js'
 import { api } from '../../convex/_generated/api'
 import { ElementSvg } from '../components/ElementSvg'
+import { fitTextToLines } from '../components/AutoFitText'
 import type { ElementView } from '../types'
 
 type ElementCollectionProps = {
@@ -80,12 +81,13 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     svgContainer.appendChild(image)
     
     const nameLabel = document.createElement('span')
-    nameLabel.style.cssText = 'font-size: 14px; color: #374151; margin-top: 4px; text-align: center; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;'
+    nameLabel.style.cssText = 'width: 80px; color: #374151; margin-top: 4px; text-align: center; overflow-wrap: anywhere;'
     nameLabel.textContent = element.name
     
     dragImage.appendChild(svgContainer)
     dragImage.appendChild(nameLabel)
     document.body.appendChild(dragImage)
+    fitTextToLines(nameLabel)
     
     e.dataTransfer.setDragImage(dragImage, 48, 70)
     

@@ -1,6 +1,7 @@
 import type { Id } from '../../convex/_generated/dataModel'
 import { useRef, useState } from 'preact/hooks'
 import { ElementSvg } from '../components/ElementSvg'
+import { AutoFitText } from '../components/AutoFitText'
 import type { ElementView } from '../types'
 
 export type CanvasElement = {
@@ -283,9 +284,9 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
               svgUrl={canvasElement.element.svgUrl}
               class="w-[60px] h-[60px] pointer-events-none flex-shrink-0"
             />
-            <span class="text-sm text-gray-700 mt-1 text-center leading-tight line-clamp-2 pointer-events-none">
+            <AutoFitText class="text-gray-700 mt-1 text-center pointer-events-none">
               {canvasElement.element.name}
-            </span>
+            </AutoFitText>
           </div>
         )
       })}
