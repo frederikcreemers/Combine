@@ -1,8 +1,8 @@
 import { useConvexAuth, useAction, useMutation, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
-import { useEffect, useState, useCallback } from 'preact/hooks'
+import { useEffect, useState, useCallback, useRef } from 'preact/hooks'
 import { api } from '../../convex/_generated/api'
-import { Canvas, type CanvasElement } from './Canvas'
+import { Canvas, ELEMENT_HEIGHT, ELEMENT_WIDTH, type CanvasElement } from './Canvas'
 import { ElementCollection } from './ElementCollection'
 import { NewElementDisplay } from './NewElementDisplay'
 import { Toolbar } from './Toolbar'
@@ -36,6 +36,7 @@ export function GamePage() {
   const unlockInitialElements = useMutation(api.game.unlockInitialElements)
   const combineAction = useAction(api.game.combine)
   const energyStatus = useQuery(api.energy.getEnergy)
+  const canvasRef = useRef<HTMLDivElement>(null)
   const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([])
   const [newElementToShow, setNewElementToShow] = useState<NewElement | null>(null)
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
@@ -174,6 +175,46 @@ export function GamePage() {
     [combineAction, canvasElements]
   )
 
+  const handleCollectionPointerDrop = useCallback(
+    async (element: ElementView, clientX: number, clientY: number) => {
+      if (!canvasRef.current) return
+
+      const rect = canvasRef.current.getBoundingClientRect()
+      if (
+        clientX < rect.left ||
+        clientX > rect.right ||
+        clientY < rect.top ||
+        clientY > rect.bottom
+      ) return
+
+      const dropX = clientX - rect.left
+      const dropY = clientY - rect.top
+      const targetElement = [...canvasElements].reverse().find((candidate) =>
+        dropX >= candidate.x &&
+        dropX <= candidate.x + ELEMENT_WIDTH &&
+        dropY >= candidate.y &&
+        dropY <= candidate.y + ELEMENT_HEIGHT
+      )
+
+      if (targetElement) {
+        await handleCombine(
+          element._id,
+          targetElement.element._id,
+          null,
+          targetElement.id,
+        )
+        return
+      }
+
+      handleAddElement(
+        element,
+        dropX - ELEMENT_WIDTH / 2,
+        dropY - ELEMENT_HEIGHT / 2,
+      )
+    },
+    [canvasElements, handleAddElement, handleCombine],
+  )
+
   if (isLoading || !isAuthenticated) {
     return (
       <div class="min-h-screen bg-gray-100 dark:bg-gray-950 flex items-center justify-center">
@@ -206,6 +247,7 @@ export function GamePage() {
           />
         </div>
         <Canvas
+          canvasRef={canvasRef}
           elements={canvasElements}
           onAddElement={handleAddElement}
           onMoveElement={handleMoveElement}
@@ -213,7 +255,7 @@ export function GamePage() {
           onBringToFront={handleBringToFront}
           onCombine={handleCombine}
         />
-        <ElementCollection />
+        <ElementCollection onPointerDrop={handleCollectionPointerDrop} />
       </div>
       {/* Toolbar: shown on mobile at bottom, hidden on desktop */}
       <div class="md:hidden shrink-0">

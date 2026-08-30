@@ -1,4 +1,5 @@
 import type { Id } from '../../convex/_generated/dataModel'
+import type { RefObject } from 'preact'
 import { useRef, useState } from 'preact/hooks'
 import { ElementSvg } from '../components/ElementSvg'
 import { AutoFitText } from '../components/AutoFitText'
@@ -18,10 +19,23 @@ type CanvasProps = {
   onRemoveElement: (id: string) => void
   onBringToFront: (id: string) => void
   onCombine: (element1Id: Id<'elements'>, element2Id: Id<'elements'>, canvasId1: string | null, canvasId2: string | null) => Promise<boolean>
+  canvasRef: RefObject<HTMLDivElement>
 }
 
-const ELEMENT_WIDTH = 96
-const ELEMENT_HEIGHT = 140
+export const ELEMENT_WIDTH = 96
+export const ELEMENT_HEIGHT = 140
+
+type PointerCanvasDrag = {
+  pointerId: number
+  elementId: string
+  startX: number
+  startY: number
+  offsetX: number
+  offsetY: number
+  dragging: boolean
+}
+
+const POINTER_DRAG_THRESHOLD = 4
 
 type CombiningState = {
   x: number
@@ -44,14 +58,15 @@ const GENERATION_SPARKLES = [
   { x: 27, y: 50, size: 11, color: '#fb923c', delay: 0.5, duration: 1.6 },
 ]
 
-export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onBringToFront, onCombine }: CanvasProps) {
-  const canvasRef = useRef<HTMLDivElement>(null)
+export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveElement, onBringToFront, onCombine, canvasRef }: CanvasProps) {
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null)
   const [combiningElementId, setCombiningElementId] = useState<string | null>(null)
   const [shakingElementId, setShakingElementId] = useState<string | null>(null)
   const [combiningState, setCombiningState] = useState<CombiningState | null>(null)
   const dragOffset = useRef({ x: 0, y: 0 })
   const sparkleTimeoutRef = useRef<number | null>(null)
+  const pointerDragRef = useRef<PointerCanvasDrag | null>(null)
+  const suppressNativeDragRef = useRef(false)
 
   const findElementAtPosition = (x: number, y: number, excludeId?: string): CanvasElement | null => {
     for (const el of elements) {
@@ -166,6 +181,10 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
   }
 
   const handleElementDragStart = (e: DragEvent, canvasElement: CanvasElement) => {
+    if (suppressNativeDragRef.current) {
+      e.preventDefault()
+      return
+    }
     if (!e.dataTransfer) return
     
     e.dataTransfer.setData('application/canvas-element-id', canvasElement.id)
@@ -207,6 +226,117 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
     } else {
       // Element stays on canvas - make it visible again
       setDraggingElementId(null)
+    }
+  }
+
+  const handleElementPointerDown = (e: PointerEvent, canvasElement: CanvasElement) => {
+    if (e.pointerType === 'mouse' || e.button !== 0) return
+
+    e.preventDefault()
+    suppressNativeDragRef.current = true
+    const target = e.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    target.setPointerCapture(e.pointerId)
+    pointerDragRef.current = {
+      pointerId: e.pointerId,
+      elementId: canvasElement.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      dragging: false,
+    }
+  }
+
+  const handleElementPointerMove = (e: PointerEvent) => {
+    const pointerDrag = pointerDragRef.current
+    if (
+      !pointerDrag ||
+      pointerDrag.pointerId !== e.pointerId ||
+      !canvasRef.current
+    ) return
+
+    const distance = Math.hypot(
+      e.clientX - pointerDrag.startX,
+      e.clientY - pointerDrag.startY,
+    )
+    if (!pointerDrag.dragging && distance < POINTER_DRAG_THRESHOLD) return
+
+    e.preventDefault()
+    if (!pointerDrag.dragging) {
+      pointerDrag.dragging = true
+      onBringToFront(pointerDrag.elementId)
+    }
+
+    const canvasRect = canvasRef.current.getBoundingClientRect()
+    onMoveElement(
+      pointerDrag.elementId,
+      e.clientX - canvasRect.left - pointerDrag.offsetX,
+      e.clientY - canvasRect.top - pointerDrag.offsetY,
+    )
+  }
+
+  const handleElementPointerUp = async (e: PointerEvent) => {
+    const pointerDrag = pointerDragRef.current
+    if (
+      !pointerDrag ||
+      pointerDrag.pointerId !== e.pointerId ||
+      !canvasRef.current
+    ) return
+
+    pointerDragRef.current = null
+    window.setTimeout(() => {
+      suppressNativeDragRef.current = false
+    }, 0)
+    if (!pointerDrag.dragging) return
+
+    const canvasRect = canvasRef.current.getBoundingClientRect()
+    const isOutsideCanvas =
+      e.clientX < canvasRect.left ||
+      e.clientX > canvasRect.right ||
+      e.clientY < canvasRect.top ||
+      e.clientY > canvasRect.bottom
+
+    if (isOutsideCanvas) {
+      onRemoveElement(pointerDrag.elementId)
+      return
+    }
+
+    const dropX = e.clientX - canvasRect.left
+    const dropY = e.clientY - canvasRect.top
+    const targetElement = findElementAtPosition(
+      dropX,
+      dropY,
+      pointerDrag.elementId,
+    )
+    const draggedElement = elements.find(
+      (element) => element.id === pointerDrag.elementId,
+    )
+
+    if (targetElement && draggedElement) {
+      setCombiningElementId(pointerDrag.elementId)
+      startCombining(
+        targetElement.x + ELEMENT_WIDTH / 2,
+        targetElement.y + ELEMENT_HEIGHT / 2,
+      )
+      const success = await onCombine(
+        draggedElement.element._id,
+        targetElement.element._id,
+        draggedElement.id,
+        targetElement.id,
+      )
+      stopCombining()
+      setCombiningElementId(null)
+      if (!success) triggerShake(pointerDrag.elementId)
+    }
+  }
+
+  const handleElementPointerCancel = (e: PointerEvent) => {
+    if (pointerDragRef.current?.pointerId === e.pointerId) {
+      pointerDragRef.current = null
+      window.setTimeout(() => {
+        suppressNativeDragRef.current = false
+      }, 0)
     }
   }
 
@@ -269,7 +399,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
         return (
           <div
             key={canvasElement.id}
-            class={`absolute w-24 h-[140px] flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none bg-white dark:bg-gray-900 border border-gray-400 dark:border-gray-600 rounded-md p-2 ${isShaking ? 'shake' : ''}`}
+            class={`absolute w-24 h-[140px] flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none bg-white dark:bg-gray-900 border border-gray-400 dark:border-gray-600 rounded-md p-2 ${isShaking ? 'shake' : ''}`}
             style={{
               left: `${canvasElement.x}px`,
               top: `${canvasElement.y}px`,
@@ -278,6 +408,11 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
             draggable
             onDragStart={(e) => handleElementDragStart(e, canvasElement)}
             onDragEnd={(e) => handleElementDragEnd(e, canvasElement)}
+            onPointerDown={(e) => handleElementPointerDown(e, canvasElement)}
+            onPointerMove={handleElementPointerMove}
+            onPointerUp={handleElementPointerUp}
+            onPointerCancel={handleElementPointerCancel}
+            onContextMenu={(e) => e.preventDefault()}
           >
             <ElementSvg
               name={canvasElement.element.name}

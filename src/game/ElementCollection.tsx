@@ -3,17 +3,31 @@ import { useState, useMemo, useEffect, useRef } from 'preact/hooks'
 import Fuse from 'fuse.js'
 import { api } from '../../convex/_generated/api'
 import { ElementSvg } from '../components/ElementSvg'
-import { fitTextToLines } from '../components/AutoFitText'
+import { AutoFitText, fitTextToLines } from '../components/AutoFitText'
 import type { ElementView } from '../types'
 
 type ElementCollectionProps = {
   onDragStart?: (element: ElementView) => void
+  onPointerDrop?: (element: ElementView, clientX: number, clientY: number) => void
 }
 
-export function ElementCollection({ onDragStart }: ElementCollectionProps) {
+type PointerDrag = {
+  pointerId: number
+  element: ElementView
+  startX: number
+  startY: number
+  dragging: boolean
+}
+
+const POINTER_DRAG_THRESHOLD = 6
+
+export function ElementCollection({ onDragStart, onPointerDrop }: ElementCollectionProps) {
   const unlockedElements = useQuery(api.game.listUnlockedElements)
   const [searchQuery, setSearchQuery] = useState('')
+  const [pointerDragPosition, setPointerDragPosition] = useState<{ x: number; y: number; element: ElementView } | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const pointerDragRef = useRef<PointerDrag | null>(null)
+  const suppressNativeDragRef = useRef(false)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -63,6 +77,10 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
   }, [sortedElements, searchQuery, fuse])
 
   const handleDragStart = (e: DragEvent, element: ElementView) => {
+    if (suppressNativeDragRef.current) {
+      e.preventDefault()
+      return
+    }
     if (!e.dataTransfer) return
     const darkMode = document.documentElement.classList.contains('dark')
     
@@ -100,6 +118,57 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     onDragStart?.(element)
   }
 
+  const handlePointerDown = (e: PointerEvent, element: ElementView) => {
+    if (e.pointerType === 'mouse' || e.button !== 0) return
+
+    e.preventDefault()
+    suppressNativeDragRef.current = true
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    pointerDragRef.current = {
+      pointerId: e.pointerId,
+      element,
+      startX: e.clientX,
+      startY: e.clientY,
+      dragging: false,
+    }
+  }
+
+  const handlePointerMove = (e: PointerEvent) => {
+    const pointerDrag = pointerDragRef.current
+    if (!pointerDrag || pointerDrag.pointerId !== e.pointerId) return
+
+    const distance = Math.hypot(
+      e.clientX - pointerDrag.startX,
+      e.clientY - pointerDrag.startY,
+    )
+    if (!pointerDrag.dragging && distance < POINTER_DRAG_THRESHOLD) return
+
+    e.preventDefault()
+    if (!pointerDrag.dragging) {
+      pointerDrag.dragging = true
+      onDragStart?.(pointerDrag.element)
+    }
+    setPointerDragPosition({
+      x: e.clientX,
+      y: e.clientY,
+      element: pointerDrag.element,
+    })
+  }
+
+  const finishPointerDrag = (e: PointerEvent, cancelled = false) => {
+    const pointerDrag = pointerDragRef.current
+    if (!pointerDrag || pointerDrag.pointerId !== e.pointerId) return
+
+    pointerDragRef.current = null
+    setPointerDragPosition(null)
+    window.setTimeout(() => {
+      suppressNativeDragRef.current = false
+    }, 0)
+    if (!cancelled && pointerDrag.dragging) {
+      onPointerDrop?.(pointerDrag.element, e.clientX, e.clientY)
+    }
+  }
+
   if (unlockedElements === undefined) {
     return (
       <div class="w-1/3 md:w-[15%] md:min-w-[200px] bg-white dark:bg-gray-950 border-l border-gray-300 dark:border-gray-800 p-4">
@@ -123,11 +192,20 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
               onDragStart={(e) => handleDragStart(e, element)}
               title={element.description}
             >
-              <ElementSvg
-                name={element.name}
-                svgUrl={element.svgUrl}
-                class="w-8 h-8 flex-shrink-0 pointer-events-none"
-              />
+              <div
+                class="w-11 h-11 -m-1.5 flex items-center justify-center flex-shrink-0 touch-none cursor-grab active:cursor-grabbing"
+                onPointerDown={(e) => handlePointerDown(e, element)}
+                onPointerMove={handlePointerMove}
+                onPointerUp={(e) => finishPointerDrag(e)}
+                onPointerCancel={(e) => finishPointerDrag(e, true)}
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                <ElementSvg
+                  name={element.name}
+                  svgUrl={element.svgUrl}
+                  class="w-8 h-8 pointer-events-none"
+                />
+              </div>
               <span class="text-sm text-gray-700 dark:text-gray-200 truncate pointer-events-none">{element.name}</span>
             </div>
           ))}
@@ -146,6 +224,26 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
           class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
+      {pointerDragPosition && (
+        <div
+          aria-hidden="true"
+          class="fixed z-[100] w-24 h-[140px] flex flex-col items-center justify-center bg-white dark:bg-gray-900 border border-gray-400 dark:border-gray-600 rounded-md p-2 pointer-events-none shadow-xl"
+          style={{
+            left: `${pointerDragPosition.x}px`,
+            top: `${pointerDragPosition.y}px`,
+            transform: 'translate(-50%, -85%)',
+          }}
+        >
+          <ElementSvg
+            name={pointerDragPosition.element.name}
+            svgUrl={pointerDragPosition.element.svgUrl}
+            class="w-[60px] h-[60px] pointer-events-none flex-shrink-0"
+          />
+          <AutoFitText class="w-20 mt-1 text-sm text-gray-700 dark:text-gray-100 text-center">
+            {pointerDragPosition.element.name}
+          </AutoFitText>
+        </div>
+      )}
     </div>
   )
 }
