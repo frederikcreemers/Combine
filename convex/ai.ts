@@ -25,7 +25,7 @@ const RECIPE_POLICY = `Use this decision process for every pair:
 Every pair has exactly one result. Each result is a non-empty element name from 1 to ${MAX_ELEMENT_NAME_LENGTH} characters.`;
 
 const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
-const MODEL_SVG = "openai/gpt-5.6-luna";
+const MODEL_SVG = "openai/gpt-5.6-luna:nitro";
 const MODEL_OPENAI = "openai/gpt-5.6-terra";
 const SVG_TEXT_POLICY = `Depict the concept visually rather than spelling out or labeling the requested element. Do not add text merely as decoration or as a shortcut for conveying the concept. Include text only when the wording is an intrinsic, recognizable, and important part of the depicted subject, such as a proper name or title on an object, or essential wording on a sign.`;
 
