@@ -27,6 +27,9 @@ export function UsersPage() {
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Date Added
             </th>
+            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Beyond Initial
+            </th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-200">
@@ -60,11 +63,14 @@ export function UsersPage() {
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {formatDate(user._creationTime)}
               </td>
+              <td class="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-700">
+                {user.unlockedBeyondInitialCount}
+              </td>
             </tr>
           ))}
           {users.length === 0 && (
             <tr>
-              <td colSpan={2} class="px-6 py-4 text-center text-sm text-gray-500">
+              <td colSpan={3} class="px-6 py-4 text-center text-sm text-gray-500">
                 No users found
               </td>
             </tr>

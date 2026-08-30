@@ -15,6 +15,7 @@ import {
   type TracedResult,
   unwrapTracedResult,
 } from "./tracer";
+import { INITIAL_ELEMENT_NAMES } from "./initialElements";
 
 type ElementResult = {
   _id: Id<"elements">;
@@ -67,8 +68,6 @@ export const listUnlockedElements = query({
     return elements.filter((el) => el !== null);
   },
 });
-
-const INITIAL_ELEMENT_NAMES = ["Earth", "Air", "Water", "Fire", "Time"];
 
 export const unlockInitialElements = mutation({
   args: {},

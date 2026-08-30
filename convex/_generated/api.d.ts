@@ -17,6 +17,7 @@ import type * as elements from "../elements.js";
 import type * as energy from "../energy.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
+import type * as initialElements from "../initialElements.js";
 import type * as recipes from "../recipes.js";
 import type * as tracer from "../tracer.js";
 import type * as traces from "../traces.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   energy: typeof energy;
   game: typeof game;
   http: typeof http;
+  initialElements: typeof initialElements;
   recipes: typeof recipes;
   tracer: typeof tracer;
   traces: typeof traces;

@@ -6,6 +6,7 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { suggestRecipes as suggestRecipesAI, suggestRecipesForPairs as suggestRecipesForPairsAI } from "./ai";
 import type { Doc, Id } from "./_generated/dataModel";
 import { readSvg, storeSvg, withSvgUrl } from "./elements";
+import { INITIAL_ELEMENT_NAMES } from "./initialElements";
 // Helper to check if user is admin (for use in queries/mutations)
 async function assertAdmin(ctx: { db: any; auth: any }) {
   const userId = await getAuthUserId(ctx);
@@ -59,8 +60,38 @@ export const listUsers = query({
   args: {},
   handler: async (ctx) => {
     await assertAdmin(ctx);
-    const users = await ctx.db.query("users").order("desc").collect();
-    return users.map(userSummary);
+    const [users, unlockedEntries, initialElements] = await Promise.all([
+      ctx.db.query("users").order("desc").collect(),
+      ctx.db.query("unlockedElements").collect(),
+      Promise.all(
+        INITIAL_ELEMENT_NAMES.map((name) =>
+          ctx.db
+            .query("elements")
+            .withIndex("by_name", (q) => q.eq("name", name))
+            .first(),
+        ),
+      ),
+    ]);
+
+    const initialElementIds = new Set(
+      initialElements
+        .filter((element): element is Doc<"elements"> => element !== null)
+        .map((element) => element._id),
+    );
+    const unlockedBeyondInitialByUser = new Map<string, Set<string>>();
+
+    for (const entry of unlockedEntries) {
+      if (initialElementIds.has(entry.elementId)) continue;
+      const elementIds = unlockedBeyondInitialByUser.get(entry.userId) ?? new Set();
+      elementIds.add(entry.elementId);
+      unlockedBeyondInitialByUser.set(entry.userId, elementIds);
+    }
+
+    return users.map((user) => ({
+      ...userSummary(user),
+      unlockedBeyondInitialCount:
+        unlockedBeyondInitialByUser.get(user._id)?.size ?? 0,
+    }));
   },
 });
 
@@ -117,8 +148,6 @@ export const getUnusedElements = query({
     return await Promise.all(elements.map((element) => withSvgUrl(ctx, element)));
   },
 });
-
-const INITIAL_ELEMENT_NAMES = ["Earth", "Air", "Water", "Fire", "Time"];
 
 export const getOrphanedElements = query({
   args: {},

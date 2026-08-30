@@ -15,4 +15,11 @@ crons.hourly(
   internal.traces.deleteOldGenerationTraces,
 );
 
+crons.daily(
+  "delete inactive anonymous users",
+  { hourUTC: 4, minuteUTC: 47 },
+  internal.users.cleanupInactiveAnonymousUsers,
+  {},
+);
+
 export default crons;

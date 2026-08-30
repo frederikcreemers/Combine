@@ -1,6 +1,10 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
+
+const ANONYMOUS_USER_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const CLEANUP_PAGE_SIZE = 20;
 
 export const isAdmin = query({
   args: {},
@@ -91,5 +95,121 @@ export const linkAccount = mutation({
         discoveredBy: currentUserId,
       });
     }
+  },
+});
+
+export const cleanupInactiveAnonymousUsers = internalMutation({
+  args: {
+    cursor: v.optional(v.string()),
+    cutoff: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const cutoff = args.cutoff ?? Date.now() - ANONYMOUS_USER_RETENTION_MS;
+    const page = await ctx.db
+      .query("users")
+      .order("asc")
+      .paginate({
+        cursor: args.cursor ?? null,
+        numItems: CLEANUP_PAGE_SIZE,
+      });
+
+    let deleted = 0;
+
+    for (const user of page.page) {
+      if (
+        user.isAnonymous !== true ||
+        user._creationTime >= cutoff
+      ) {
+        continue;
+      }
+
+      const latestUnlock = await ctx.db
+        .query("unlockedElements")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .order("desc")
+        .first();
+
+      if (latestUnlock && latestUnlock._creationTime >= cutoff) {
+        continue;
+      }
+
+      const [
+        unlockedEntries,
+        energyEntries,
+        adminEntries,
+        discoveredElements,
+        sessions,
+        accounts,
+        verifiers,
+      ] = await Promise.all([
+        ctx.db
+          .query("unlockedElements")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .collect(),
+        ctx.db
+          .query("userEnergy")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .collect(),
+        ctx.db
+          .query("adminUsers")
+          .withIndex("by_user", (q) => q.eq("userId", user._id))
+          .collect(),
+        ctx.db
+          .query("elements")
+          .withIndex("by_discoveredBy", (q) => q.eq("discoveredBy", user._id))
+          .collect(),
+        ctx.db
+          .query("authSessions")
+          .withIndex("userId", (q) => q.eq("userId", user._id))
+          .collect(),
+        ctx.db
+          .query("authAccounts")
+          .withIndex("userIdAndProvider", (q) => q.eq("userId", user._id))
+          .collect(),
+        ctx.db.query("authVerifiers").collect(),
+      ]);
+
+      for (const account of accounts) {
+        const verificationCodes = await ctx.db
+          .query("authVerificationCodes")
+          .withIndex("accountId", (q) => q.eq("accountId", account._id))
+          .collect();
+        for (const code of verificationCodes) await ctx.db.delete(code._id);
+        await ctx.db.delete(account._id);
+      }
+
+      for (const session of sessions) {
+        const refreshTokens = await ctx.db
+          .query("authRefreshTokens")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .collect();
+        for (const token of refreshTokens) await ctx.db.delete(token._id);
+
+        for (const verifier of verifiers) {
+          if (verifier.sessionId === session._id) await ctx.db.delete(verifier._id);
+        }
+        await ctx.db.delete(session._id);
+      }
+
+      for (const entry of unlockedEntries) await ctx.db.delete(entry._id);
+      for (const entry of energyEntries) await ctx.db.delete(entry._id);
+      for (const entry of adminEntries) await ctx.db.delete(entry._id);
+      for (const element of discoveredElements) {
+        await ctx.db.patch(element._id, { discoveredBy: undefined });
+      }
+
+      await ctx.db.delete(user._id);
+      deleted += 1;
+    }
+
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.users.cleanupInactiveAnonymousUsers,
+        { cursor: page.continueCursor, cutoff },
+      );
+    }
+
+    return { deleted, complete: page.isDone };
   },
 });
