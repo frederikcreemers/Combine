@@ -6,4 +6,5 @@ export type ElementView = {
   name: string
   description?: string
   svgUrl: string
+  generationStatus?: 'pending' | 'complete' | 'failed'
 }

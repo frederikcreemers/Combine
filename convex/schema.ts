@@ -9,6 +9,13 @@ export default defineSchema({
     description: v.optional(v.string()),
     svgStorageId: v.id("_storage"),
     discoveredBy: v.optional(v.id("users")),
+    generationStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("complete"),
+        v.literal("failed"),
+      ),
+    ),
   })
     .index("by_name", ["name"])
     .index("by_discoveredBy", ["discoveredBy"]),

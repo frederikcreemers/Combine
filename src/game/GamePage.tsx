@@ -18,9 +18,11 @@ import type { Id } from '../../convex/_generated/dataModel'
 import type { ElementView } from '../types'
 
 type NewElement = {
+  _id: Id<'elements'>
   name: string
   description?: string
   svgUrl: string
+  generationStatus?: 'pending' | 'complete' | 'failed'
   recipeDiscovered: boolean
   elementDiscovered: boolean
 }
@@ -42,6 +44,13 @@ export function GamePage() {
   const [isAboutModalOpen, setIsAboutModalOpen] = useState(false)
   const [isLoginRequiredModalOpen, setIsLoginRequiredModalOpen] = useState(false)
   const [isRateLimitModalOpen, setIsRateLimitModalOpen] = useState(false)
+  const generatedElement = useQuery(
+    api.elements.getElementView,
+    newElementToShow?.elementDiscovered &&
+      newElementToShow.generationStatus === 'pending'
+      ? { elementId: newElementToShow._id }
+      : 'skip'
+  )
 
   useRunAfterSignIn(() => {
     unlockInitialElements()
@@ -53,6 +62,29 @@ export function GamePage() {
       signIn('anonymous')
     }
   }, [isLoading, isAuthenticated, signIn, signOut])
+
+  useEffect(() => {
+    if (!generatedElement || generatedElement.generationStatus === 'pending') {
+      return
+    }
+
+    setCanvasElements((previous) =>
+      previous.map((canvasElement) =>
+        canvasElement.element._id === generatedElement._id
+          ? { ...canvasElement, element: generatedElement }
+          : canvasElement
+      )
+    )
+    setNewElementToShow((current) =>
+      current?._id === generatedElement._id
+        ? {
+            ...generatedElement,
+            recipeDiscovered: current.recipeDiscovered,
+            elementDiscovered: current.elementDiscovered,
+          }
+        : current
+    )
+  }, [generatedElement])
 
   const handleAddElement = useCallback((element: ElementView, x: number, y: number) => {
     const newCanvasElement: CanvasElement = {
@@ -123,9 +155,11 @@ export function GamePage() {
         // Show new element display if this is a newly unlocked element
         if (result.new) {
           setNewElementToShow({
+            _id: result.element._id,
             name: result.element.name,
             description: result.element.description,
             svgUrl: result.element.svgUrl,
+            generationStatus: result.element.generationStatus,
             recipeDiscovered: result.recipeDiscovered,
             elementDiscovered: result.elementDiscovered,
           })

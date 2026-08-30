@@ -314,6 +314,7 @@ export const updateElementInternal = internalMutation({
     await ctx.db.patch(args.elementId, {
       name: args.name,
       svgStorageId: args.svgStorageId,
+      generationStatus: "complete",
       // Omitting the arg leaves the description unchanged (e.g. on rename);
       // passing an empty string clears it.
       ...(args.description !== undefined

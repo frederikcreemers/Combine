@@ -63,6 +63,13 @@ export const insertElement = internalMutation({
     description: v.optional(v.string()),
     svgStorageId: v.id("_storage"),
     discoveredBy: v.optional(v.id("users")),
+    generationStatus: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("complete"),
+        v.literal("failed"),
+      ),
+    ),
   },
   handler: async (ctx, args): Promise<string> => {
     const elementId = await ctx.db.insert("elements", {
@@ -70,6 +77,7 @@ export const insertElement = internalMutation({
       description: args.description,
       svgStorageId: args.svgStorageId,
       discoveredBy: args.discoveredBy,
+      generationStatus: args.generationStatus,
     });
     return elementId;
   },
@@ -118,6 +126,16 @@ export const getElementByName = internalQuery({
   },
 });
 
+export const getElementView = query({
+  args: {
+    elementId: v.id("elements"),
+  },
+  handler: async (ctx, args) => {
+    const element = await ctx.db.get(args.elementId);
+    return element ? await withSvgUrl(ctx, element) : null;
+  },
+});
+
 export const updateElementSVG = internalMutation({
   args: {
     elementId: v.id("elements"),
@@ -131,6 +149,7 @@ export const updateElementSVG = internalMutation({
     }
     await ctx.db.patch(args.elementId, {
       svgStorageId: args.svgStorageId,
+      generationStatus: "complete",
     });
     if (element.svgStorageId !== args.svgStorageId) {
       await ctx.storage.delete(element.svgStorageId);
