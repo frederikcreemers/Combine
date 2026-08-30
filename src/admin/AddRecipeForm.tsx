@@ -19,6 +19,9 @@ export function AddRecipeForm() {
       ? { element1: ingredient1 as Id<'elements'>, element2: ingredient2 as Id<'elements'> }
       : 'skip'
   )
+  const isCheckingCombination = Boolean(
+    ingredient1 && ingredient2 && existingCombinations === undefined
+  )
 
   const sortedElements = useMemo(() => {
     if (!elements) return []
@@ -30,6 +33,9 @@ export function AddRecipeForm() {
     if (!ingredient1 || !ingredient2 || !result) {
       return
     }
+    if (isCheckingCombination) {
+      return
+    }
     if (result === 'NEW_ELEMENT') {
       if (!newElementName.trim()) {
         alert('Please enter a name for the new element')
@@ -38,6 +44,20 @@ export function AddRecipeForm() {
     }
     if (result === 'GENERATE' && existingCombinations && existingCombinations.length > 0) {
       const confirmed = confirm('A recipe with these ingredients already exists. Are you sure you want to generate another one?')
+      if (!confirmed) {
+        return
+      }
+    }
+    const isExistingElementResult = result !== 'GENERATE' && result !== 'NEW_ELEMENT'
+    const shouldReplaceExisting =
+      isExistingElementResult &&
+      existingCombinations !== undefined &&
+      existingCombinations.length > 0
+    if (shouldReplaceExisting) {
+      const recipeLabel = existingCombinations.length === 1 ? 'recipe' : 'recipes'
+      const confirmed = confirm(
+        `This combination already has ${existingCombinations.length} ${recipeLabel}. Replace ${existingCombinations.length === 1 ? 'it' : 'them'} with the selected result?`
+      )
       if (!confirmed) {
         return
       }
@@ -69,6 +89,9 @@ export function AddRecipeForm() {
           ingredient1: ingredient1 as Id<'elements'>,
           ingredient2: ingredient2 as Id<'elements'>,
           result: resultElementId,
+          ...(isExistingElementResult
+            ? { replaceExisting: shouldReplaceExisting }
+            : {}),
         })
       }
       setIngredient1('')
@@ -168,7 +191,7 @@ export function AddRecipeForm() {
         )}
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || isCheckingCombination}
           class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoading && (
@@ -177,7 +200,11 @@ export function AddRecipeForm() {
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           )}
-          {isLoading ? (result === 'GENERATE' ? 'Generating...' : 'Adding...') : (result === 'GENERATE' ? 'Generate Recipe' : 'Add Recipe')}
+          {isCheckingCombination
+            ? 'Checking Combination...'
+            : isLoading
+              ? (result === 'GENERATE' ? 'Generating...' : 'Adding...')
+              : (result === 'GENERATE' ? 'Generate Recipe' : 'Add Recipe')}
         </button>
       </div>
     </form>

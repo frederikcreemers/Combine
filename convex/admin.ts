@@ -516,33 +516,46 @@ export const addRecipe = mutation({
     ingredient1: v.id("elements"),
     ingredient2: v.id("elements"),
     result: v.id("elements"),
+    replaceExisting: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await assertAdmin(ctx);
-    // Check if a recipe with the same ingredients (in any order) and result already exists
-    const existingRecipe1 = await ctx.db
+    const existingRecipes = await ctx.db
       .query("recipes")
       .filter((q) =>
-        q.and(
-          q.eq(q.field("ingredient1"), args.ingredient1),
-          q.eq(q.field("ingredient2"), args.ingredient2),
-          q.eq(q.field("result"), args.result)
+        q.or(
+          q.and(
+            q.eq(q.field("ingredient1"), args.ingredient1),
+            q.eq(q.field("ingredient2"), args.ingredient2)
+          ),
+          q.and(
+            q.eq(q.field("ingredient1"), args.ingredient2),
+            q.eq(q.field("ingredient2"), args.ingredient1)
+          )
         )
       )
-      .first();
+      .collect();
 
-    const existingRecipe2 = await ctx.db
-      .query("recipes")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("ingredient1"), args.ingredient2),
-          q.eq(q.field("ingredient2"), args.ingredient1),
-          q.eq(q.field("result"), args.result)
-        )
-      )
-      .first();
+    if (args.replaceExisting && existingRecipes.length > 0) {
+      const [recipeToKeep, ...duplicateRecipes] = existingRecipes;
+      await ctx.db.patch(recipeToKeep._id, {
+        ingredient1: args.ingredient1,
+        ingredient2: args.ingredient2,
+        result: args.result,
+      });
+      for (const duplicateRecipe of duplicateRecipes) {
+        await ctx.db.delete(duplicateRecipe._id);
+      }
+      return recipeToKeep._id;
+    }
 
-    if (existingRecipe1 || existingRecipe2) {
+    if (args.replaceExisting === false && existingRecipes.length > 0) {
+      throw new Error(
+        "A recipe with these ingredients was created before this form was submitted"
+      );
+    }
+
+    if (existingRecipes.some((recipe) => recipe.result === args.result)) {
       throw new Error("A recipe with these ingredients and result already exists");
     }
 
