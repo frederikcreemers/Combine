@@ -62,9 +62,9 @@ export function NewElementDisplay({ element, recipeDiscovered, elementDiscovered
         style={{ transformOrigin: 'center center' }}
       />
       <h1 class="text-4xl font-bold text-white mb-8 relative z-10">{title}</h1>
-      <div class="bg-white border border-gray-400 rounded-lg p-4 flex flex-col items-center relative z-10 max-w-md mx-4">
+      <div class="bg-white dark:bg-gray-900 border border-gray-400 dark:border-gray-600 rounded-lg p-4 flex flex-col items-center relative z-10 max-w-md mx-4">
         <ElementSvg name={element.name} svgUrl={element.svgUrl} class="w-32 h-32" />
-        <span class="text-xl text-gray-700 mt-2">{element.name}</span>
+        <span class="text-xl text-gray-700 dark:text-gray-100 mt-2">{element.name}</span>
       </div>
       {element.description && (
         <p class="text-sm text-white italic text-center mt-4 max-w-md mx-4 relative z-10">

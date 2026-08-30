@@ -64,13 +64,14 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
 
   const handleDragStart = (e: DragEvent, element: ElementView) => {
     if (!e.dataTransfer) return
+    const darkMode = document.documentElement.classList.contains('dark')
     
     e.dataTransfer.setData('application/element', JSON.stringify(element))
     e.dataTransfer.effectAllowed = 'copy'
     
     // Create custom drag image that matches canvas element card appearance
     const dragImage = document.createElement('div')
-    dragImage.style.cssText = 'position: absolute; top: -1000px; left: -1000px; width: 96px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; border: 1px solid #9ca3af; border-radius: 6px; padding: 8px;'
+    dragImage.style.cssText = `position: absolute; top: -1000px; left: -1000px; width: 96px; height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: ${darkMode ? '#111827' : 'white'}; border: 1px solid ${darkMode ? '#4b5563' : '#9ca3af'}; border-radius: 6px; padding: 8px;`
     
     const svgContainer = document.createElement('div')
     svgContainer.style.cssText = 'width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;'
@@ -81,7 +82,7 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
     svgContainer.appendChild(image)
     
     const nameLabel = document.createElement('span')
-    nameLabel.style.cssText = 'width: 80px; color: #374151; margin-top: 4px; text-align: center; overflow-wrap: anywhere;'
+    nameLabel.style.cssText = `width: 80px; color: ${darkMode ? '#f3f4f6' : '#374151'}; margin-top: 4px; text-align: center; overflow-wrap: anywhere;`
     nameLabel.textContent = element.name
     
     dragImage.appendChild(svgContainer)
@@ -101,23 +102,23 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
 
   if (unlockedElements === undefined) {
     return (
-      <div class="w-1/3 md:w-[15%] md:min-w-[200px] bg-white border-l border-gray-300 p-4">
-        <p class="text-gray-500">Loading...</p>
+      <div class="w-1/3 md:w-[15%] md:min-w-[200px] bg-white dark:bg-gray-950 border-l border-gray-300 dark:border-gray-800 p-4">
+        <p class="text-gray-500 dark:text-gray-400">Loading...</p>
       </div>
     )
   }
 
   return (
-    <div class="w-1/3 md:w-[15%] md:min-w-[200px] bg-white border-l border-gray-300 flex flex-col">
+    <div class="w-1/3 md:w-[15%] md:min-w-[200px] bg-white dark:bg-gray-950 border-l border-gray-300 dark:border-gray-800 flex flex-col">
       <div class="p-4 pb-2">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Elements</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Elements</h2>
       </div>
       <div class="flex-1 overflow-y-auto px-4">
         <div class="space-y-2">
           {filteredElements.map((element) => (
             <div
               key={element._id}
-              class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-grab active:cursor-grabbing select-none"
+              class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 cursor-grab active:cursor-grabbing select-none"
               draggable
               onDragStart={(e) => handleDragStart(e, element)}
               title={element.description}
@@ -127,22 +128,22 @@ export function ElementCollection({ onDragStart }: ElementCollectionProps) {
                 svgUrl={element.svgUrl}
                 class="w-8 h-8 flex-shrink-0 pointer-events-none"
               />
-              <span class="text-sm text-gray-700 truncate pointer-events-none">{element.name}</span>
+              <span class="text-sm text-gray-700 dark:text-gray-200 truncate pointer-events-none">{element.name}</span>
             </div>
           ))}
           {filteredElements.length === 0 && searchQuery && (
-            <p class="text-sm text-gray-500 text-center py-2">No elements found</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-2">No elements found</p>
           )}
         </div>
       </div>
-      <div class="p-4 pt-2 border-t border-gray-200">
+      <div class="p-4 pt-2 border-t border-gray-200 dark:border-gray-800">
         <input
           ref={searchInputRef}
           type="text"
           placeholder={`Search ${unlockedElements.length} elements...`}
           value={searchQuery}
           onInput={(e) => setSearchQuery((e.target as HTMLInputElement).value)}
-          class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          class="w-full px-3 py-2 text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>
     </div>

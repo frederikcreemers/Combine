@@ -34,21 +34,21 @@ export function Modal({ isOpen, onClose, title, maxWidth = 'md', headerLeft, chi
 
   return (
     <div
-      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      class="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
       onClick={onClose}
     >
       <div
-        class={`bg-white rounded-lg shadow-xl w-full ${maxWidthClasses[maxWidth]} mx-4 max-h-[80vh] flex flex-col`}
+        class={`bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded-lg shadow-xl w-full ${maxWidthClasses[maxWidth]} mx-4 max-h-[80vh] flex flex-col`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div class="flex items-center justify-between p-4 border-b border-gray-200">
+        <div class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div class="flex items-center gap-2">
             {headerLeft}
-            <h2 class="text-xl font-semibold text-gray-900">{title}</h2>
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
           </div>
           <button
             onClick={onClose}
-            class="text-gray-400 hover:text-gray-600 transition-colors"
+            class="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 transition-colors"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6">
               <line x1="18" y1="6" x2="6" y2="18" />

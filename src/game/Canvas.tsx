@@ -269,7 +269,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
         return (
           <div
             key={canvasElement.id}
-            class={`absolute w-24 h-[140px] flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none bg-white border border-gray-400 rounded-md p-2 ${isShaking ? 'shake' : ''}`}
+            class={`absolute w-24 h-[140px] flex flex-col items-center justify-center cursor-grab active:cursor-grabbing select-none bg-white dark:bg-gray-900 border border-gray-400 dark:border-gray-600 rounded-md p-2 ${isShaking ? 'shake' : ''}`}
             style={{
               left: `${canvasElement.x}px`,
               top: `${canvasElement.y}px`,
@@ -284,7 +284,7 @@ export function Canvas({ elements = [], onAddElement, onMoveElement, onRemoveEle
               svgUrl={canvasElement.element.svgUrl}
               class="w-[60px] h-[60px] pointer-events-none flex-shrink-0"
             />
-            <AutoFitText class="text-gray-700 mt-1 text-center pointer-events-none">
+            <AutoFitText class="text-gray-700 dark:text-gray-100 mt-1 text-center pointer-events-none">
               {canvasElement.element.name}
             </AutoFitText>
           </div>

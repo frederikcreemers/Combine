@@ -4,6 +4,28 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f3f4f6" />
+    <script>
+      (() => {
+        const storageKey = 'combine-theme'
+        const darkColor = '#030712'
+        const lightColor = '#f3f4f6'
+        let theme = null
+        try {
+          const storedTheme = localStorage.getItem(storageKey)
+          if (storedTheme === 'light' || storedTheme === 'dark') {
+            theme = storedTheme
+          }
+        } catch {}
+        if (theme === null) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        document.querySelector('meta[name="theme-color"]')?.setAttribute(
+          'content',
+          theme === 'dark' ? darkColor : lightColor,
+        )
+      })()
+    </script>
 
     <title>Combine - infinite Combinations</title>
     <meta name="description" content="Starting with just earth, wind, fire, water and time, combine elements to explore an infinite world of possible elements" />

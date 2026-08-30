@@ -1,8 +1,12 @@
+import type { Theme } from '../lib/useTheme'
+
 type ToolbarProps = {
   onClearCanvas: () => void
   onAccountClick: () => void
   onDiscoveriesClick: () => void
   onAboutClick: () => void
+  onThemeToggle: () => void
+  theme: Theme
   energy?: number | null
   maxEnergy?: number
 }
@@ -12,6 +16,8 @@ export function Toolbar({
   onAccountClick,
   onDiscoveriesClick,
   onAboutClick,
+  onThemeToggle,
+  theme,
   energy,
   maxEnergy = 30,
 }: ToolbarProps) {
@@ -114,6 +120,51 @@ export function Toolbar({
         {/* Tooltip: above on mobile, right on desktop */}
         <span class="absolute bottom-full md:bottom-auto md:left-full mb-2 md:mb-0 md:ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
           Account
+        </span>
+      </button>
+
+      <button
+        onClick={onThemeToggle}
+        class="w-10 h-10 flex items-center justify-center rounded-lg bg-red-900 hover:bg-red-800 transition-colors group relative"
+        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        aria-pressed={theme === 'dark'}
+      >
+        {theme === 'dark' ? (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="w-6 h-6 text-amber-200"
+          >
+            <circle cx="12" cy="12" r="4" />
+            <line x1="12" y1="2" x2="12" y2="4" />
+            <line x1="12" y1="20" x2="12" y2="22" />
+            <line x1="4.93" y1="4.93" x2="6.34" y2="6.34" />
+            <line x1="17.66" y1="17.66" x2="19.07" y2="19.07" />
+            <line x1="2" y1="12" x2="4" y2="12" />
+            <line x1="20" y1="12" x2="22" y2="12" />
+            <line x1="4.93" y1="19.07" x2="6.34" y2="17.66" />
+            <line x1="17.66" y1="6.34" x2="19.07" y2="4.93" />
+          </svg>
+        ) : (
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="w-6 h-6 text-blue-200"
+          >
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+          </svg>
+        )}
+        <span class="absolute bottom-full md:bottom-auto md:left-full mb-2 md:mb-0 md:ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+          Switch to {theme === 'dark' ? 'light' : 'dark'} mode
         </span>
       </button>
 

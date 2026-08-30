@@ -13,7 +13,7 @@ export function DiscoveredItemsModal({ isOpen, onClose }: DiscoveredItemsModalPr
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Your Discoveries" maxWidth="lg">
-      <p class="text-sm text-gray-500 mb-4">
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
         You were the first player to make these items.
       </p>
       {discoveredElements === undefined ? (
@@ -24,7 +24,7 @@ export function DiscoveredItemsModal({ isOpen, onClose }: DiscoveredItemsModalPr
           </svg>
         </div>
       ) : discoveredElements.length === 0 ? (
-        <p class="text-center text-gray-400 py-8">
+        <p class="text-center text-gray-400 dark:text-gray-500 py-8">
           You haven't discovered any new elements yet. Keep combining!
         </p>
       ) : (
@@ -32,18 +32,18 @@ export function DiscoveredItemsModal({ isOpen, onClose }: DiscoveredItemsModalPr
           {discoveredElements.map((element) => (
             <div
               key={element._id}
-              class="bg-gray-50 rounded-lg p-3 flex flex-col items-center border border-gray-200"
+              class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 flex flex-col items-center border border-gray-200 dark:border-gray-700"
             >
               <ElementSvg
                 name={element.name}
                 svgUrl={element.svgUrl}
                 class="w-12 h-12 mb-2"
               />
-              <span class="text-xs text-gray-700 text-center font-medium">
+              <span class="text-xs text-gray-700 dark:text-gray-200 text-center font-medium">
                 {element.name}
               </span>
               {element.description && (
-                <span class="text-[10px] text-gray-500 italic text-center mt-1">
+                <span class="text-[10px] text-gray-500 dark:text-gray-400 italic text-center mt-1">
                   {element.description}
                 </span>
               )}
