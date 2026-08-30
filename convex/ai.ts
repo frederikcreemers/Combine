@@ -120,13 +120,14 @@ ${recipeExamples || "None yet"}
 
 Given two elements to combine: "${ingredient1Name}" and "${ingredient2Name}"
 
-Determine what the result should be. You can:
+Determine what the result should be. Every combination must produce a result. First look for a direct physical, causal, or commonly understood result. If there is none, use a strong metaphorical, cultural, wordplay, or whimsical association. Never respond with "NO RESULT".
+
+When choosing the result:
 1. PREFER reusing an existing element from the list above when it makes sense - this keeps the game cohesive
 2. Create a new element name only if no existing element fits well - optimize for results that are interesting to build upon further
-3. Respond with "NO RESULT" if these elements should not be combinable
-4. Prefer a result that is different from both ingredients. Returning one of the ingredients is allowed only when combining them genuinely leaves that ingredient unchanged, and only when no other existing element describes the result better. Before returning either ingredient, check the existing elements and relevant recipe patterns for a more specific result. For example, when a profession or activity is combined with "Tool", prefer its characteristic existing tool.
-5. Also consider whimsical combinations, like sky + cheese = moon.
-6. Elements like "Idea" or "Philosophy" can be combined with concrete things to create broad concepts (e.g. burger + philosophy = food), but limit this to a small set of widely applicable concepts rather than creating overly specific abstractions.
+3. Prefer a result that is different from both ingredients. Returning one of the ingredients is allowed only when combining them genuinely leaves that ingredient unchanged, and only when no other existing element describes the result better. Before returning either ingredient, check the existing elements and relevant recipe patterns for a more specific result. For example, when a profession or activity is combined with "Tool", prefer its characteristic existing tool.
+4. Also consider whimsical combinations, like sky + cheese = moon.
+5. Elements like "Idea" or "Philosophy" can be combined with concrete things to create broad concepts (e.g. burger + philosophy = food), but limit this to a small set of widely applicable concepts rather than creating overly specific abstractions.
 
 Keep the name short (under ${MAX_ELEMENT_NAME_LENGTH} characters).`;
 
@@ -136,18 +137,27 @@ Keep the name short (under ${MAX_ELEMENT_NAME_LENGTH} characters).`;
 Reply with JSON in this exact format (no markdown, no explanation):
 {"result": "ElementName", "surprising": true}
 
-- "result" should be the element name or "NO RESULT"
+- "result" must be a short element name, never "NO RESULT"
 - "surprising" should be true if this combination is unexpected/creative/whimsical, false if it's obvious/straightforward`;
   } else {
     return `${basePrompt}
 
-IMPORTANT: Reply with ONLY the result element name (or "NO RESULT"), nothing else. No explanations, no markdown, just the name.`;
+IMPORTANT: Reply with ONLY the result element name, nothing else. Never reply with "NO RESULT". No explanations, no markdown, just the name.`;
   }
 }
 
 interface GeminiRecipeResponse {
   result: string;
   surprising: boolean;
+}
+
+function isValidRecipeResult(result: string): boolean {
+  const trimmed = result.trim();
+  return (
+    trimmed.length > 0 &&
+    trimmed.length <= MAX_ELEMENT_NAME_LENGTH &&
+    trimmed.toUpperCase() !== "NO RESULT"
+  );
 }
 
 function parseGeminiResponse(response: string): GeminiRecipeResponse | null {
@@ -204,15 +214,10 @@ export async function generateRecipe(
 
       const trimmed = parsed.result.trim();
 
-      // Accept "NO RESULT" regardless of length
-      if (trimmed.toUpperCase() === "NO RESULT") {
-        return trimmed;
-      }
-
-      // Retry if the result is too long
-      if (trimmed.length > MAX_ELEMENT_NAME_LENGTH) {
+      // Treat malformed results and refusals as generation failures, not game outcomes.
+      if (!isValidRecipeResult(trimmed)) {
         console.log(
-          `Generated name too long (${trimmed.length} chars): "${trimmed}", retrying...`,
+          `Generated invalid recipe result "${trimmed}", retrying...`,
         );
         continue;
       }
@@ -237,10 +242,7 @@ export async function generateRecipe(
         usages.push(openaiUsage);
         const openaiTrimmed = openaiResult.trim();
 
-        if (
-          openaiTrimmed.toUpperCase() !== "NO RESULT" &&
-          openaiTrimmed.length <= MAX_ELEMENT_NAME_LENGTH
-        ) {
+        if (isValidRecipeResult(openaiTrimmed)) {
           console.log(`OpenAI suggested "${openaiTrimmed}" instead`);
           return openaiTrimmed;
         }
@@ -249,11 +251,9 @@ export async function generateRecipe(
       return trimmed;
     }
 
-    // After max retries, return "NO RESULT" as a fallback
-    console.log(
-      `Failed to generate valid recipe after ${MAX_GENERATION_RETRIES} attempts`,
+    throw new Error(
+      `Failed to generate a valid recipe after ${MAX_GENERATION_RETRIES} attempts`,
     );
-    return "NO RESULT";
   } finally {
     await recordAiCost(
       ctx,
@@ -378,7 +378,7 @@ Guidelines:
 - PREFER reusing an existing element from the list above when it makes sense - this keeps the game cohesive.
 - When introducing new elements, prioritize elements being fun to build upon, over being completely logical.
 - Also consider combinations that might be a little bit whimsical, like sky + cheese = moon.
-- Use "NO RESULT" as the result if the two elements really should not be combinable, but prefer giving a result: these are combinations players will actually try, and dead ends are frustrating.
+- Every combination must produce a result. If there is no direct result, use a strong metaphorical, cultural, wordplay, or whimsical association.
 - Keep element names short (under ${MAX_ELEMENT_NAME_LENGTH} characters).
 
 Reply with one line per combination, in the same order as listed above, in the format: "ingredient1 + ingredient2 = result"
@@ -416,7 +416,7 @@ No explanations, no markdown, just the recipes.
       requestedPairs.delete(matchedKey); // dedupe if the model repeats a pair
 
       const result = resultPart.trim();
-      if (!result || result.toUpperCase() === "NO RESULT") continue;
+      if (!isValidRecipeResult(result)) continue;
 
       suggestions.push({
         ingredient1: requestedPair.ingredient1,

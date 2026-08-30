@@ -213,7 +213,7 @@ export const discover = internalAction({
     element2: v.id("elements"),
     userId: v.id("users"),
   },
-  handler: async (ctx, args): Promise<{ element: ElementResult; elementDiscovered: boolean } | null> => {
+  handler: async (ctx, args): Promise<{ element: ElementResult; elementDiscovered: boolean }> => {
     const element1 = await ctx.runQuery(internal.elements.getElementPublic, {
       elementId: args.element1,
     });
@@ -232,13 +232,7 @@ export const discover = internalAction({
     const existingElements = await ctx.runQuery(internal.elements.listElementNames, {});
     const result = await generateRecipeAI(ctx, element1.name, element2.name, recipeExamplesText, existingElements);
 
-    let resultName = result.trim();
-
-    if (resultName.toUpperCase() === "NO RESULT") {
-      return null;
-    }
-
-    resultName = capitalizeElementName(resultName);
+    const resultName = capitalizeElementName(result.trim());
 
     // Check if element exists
     const existingElement = await ctx.runQuery(internal.elements.getElementByName, {
@@ -321,10 +315,9 @@ export const discover = internalAction({
 });
 
 type CombineResult = 
-  | { element: ElementResult; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean; requiresLogin?: false; rateLimitExceeded?: false }
+  | { element: ElementResult; new: boolean; recipeDiscovered: boolean; elementDiscovered: boolean }
   | { requiresLogin: true }
-  | { rateLimitExceeded: true }
-  | null;
+  | { rateLimitExceeded: true };
 
 export const isUserAnonymous = internalQuery({
   args: {
@@ -398,10 +391,6 @@ export const combine = action({
       element2: args.element2,
       userId,
     });
-
-    if (!discoverResult) {
-      return null;
-    }
 
     const energyCost = discoverResult.elementDiscovered
       ? ENERGY_COST_NEW_ELEMENT

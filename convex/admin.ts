@@ -617,13 +617,7 @@ export const generateRecipe = action({
     const existingElements = await ctx.runQuery(internal.elements.listElementNames, {});
     const result = await generateRecipeAI(ctx, element1.name, element2.name, recipeExamplesText, existingElements);
 
-    let resultName = result.trim();
-
-    if (resultName.toUpperCase() === "NO RESULT") {
-      return null;
-    }
-
-    resultName = capitalizeElementName(resultName);
+    const resultName = capitalizeElementName(result.trim());
 
     // Check if element exists
     const existingElement = await ctx.runQuery(internal.elements.getElementByName, {

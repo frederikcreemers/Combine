@@ -92,48 +92,44 @@ export function GamePage() {
           element2: element2Id,
         })
 
-        if (result && 'requiresLogin' in result && result.requiresLogin) {
+        if ('requiresLogin' in result) {
           setIsLoginRequiredModalOpen(true)
           return false
         }
 
-        if (result && 'rateLimitExceeded' in result && result.rateLimitExceeded) {
+        if ('rateLimitExceeded' in result) {
           setIsRateLimitModalOpen(true)
           return false
         }
 
-        if (result && 'element' in result) {
-          // Get position of the target element (the one being dropped onto)
-          const targetElement = canvasElements.find((el) => el.id === canvasId2)
-          const position = targetElement ? { x: targetElement.x, y: targetElement.y } : { x: 100, y: 100 }
+        // Get position of the target element (the one being dropped onto)
+        const targetElement = canvasElements.find((el) => el.id === canvasId2)
+        const position = targetElement ? { x: targetElement.x, y: targetElement.y } : { x: 100, y: 100 }
 
-          // Remove both elements and add the result
-          setCanvasElements((prev) => {
-            const filtered = prev.filter((el) => el.id !== canvasId1 && el.id !== canvasId2)
-            const newElement: CanvasElement = {
-              id: `canvas-element-${nextCanvasElementId++}`,
-              x: position.x,
-              y: position.y,
-              element: result.element,
-            }
-            return [...filtered, newElement]
-          })
-
-          // Show new element display if this is a newly unlocked element
-          if (result.new) {
-            setNewElementToShow({
-              name: result.element.name,
-              description: result.element.description,
-              svgUrl: result.element.svgUrl,
-              recipeDiscovered: result.recipeDiscovered,
-              elementDiscovered: result.elementDiscovered,
-            })
+        // Remove both elements and add the result
+        setCanvasElements((prev) => {
+          const filtered = prev.filter((el) => el.id !== canvasId1 && el.id !== canvasId2)
+          const newElement: CanvasElement = {
+            id: `canvas-element-${nextCanvasElementId++}`,
+            x: position.x,
+            y: position.y,
+            element: result.element,
           }
+          return [...filtered, newElement]
+        })
 
-          return true
+        // Show new element display if this is a newly unlocked element
+        if (result.new) {
+          setNewElementToShow({
+            name: result.element.name,
+            description: result.element.description,
+            svgUrl: result.element.svgUrl,
+            recipeDiscovered: result.recipeDiscovered,
+            elementDiscovered: result.elementDiscovered,
+          })
         }
-        // If result is null, no valid recipe - leave elements on canvas
-        return false
+
+        return true
       } catch (error) {
         console.error('Failed to combine elements:', error)
         return false

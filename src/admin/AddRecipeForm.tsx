@@ -47,13 +47,10 @@ export function AddRecipeForm() {
     try {
       if (result === 'GENERATE') {
         // Use AI to generate the recipe
-        const generatedResult = await generateRecipe({
+        await generateRecipe({
           element1: ingredient1 as Id<'elements'>,
           element2: ingredient2 as Id<'elements'>,
         })
-        if (generatedResult === null) {
-          alert('The AI determined these elements cannot be combined.')
-        }
       } else {
         let resultElementId: Id<'elements'>
         
