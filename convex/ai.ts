@@ -27,7 +27,9 @@ Every pair has exactly one result. Each result is a non-empty element name from 
 const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
 const MODEL_SVG = "openai/gpt-5.6-luna:nitro";
 const MODEL_OPENAI = "openai/gpt-5.6-terra";
+const SVG_MAX_COMPLETION_TOKENS = 4096;
 const SVG_TEXT_POLICY = `Depict the concept visually rather than spelling out or labeling the requested element. Do not add text merely as decoration or as a shortcut for conveying the concept. Include text only when the wording is an intrinsic, recognizable, and important part of the depicted subject, such as a proper name or title on an object, or essential wording on a sign.`;
+const SVG_COMPLEXITY_POLICY = `Keep the SVG compact: use at most 24 visible graphical elements, prefer basic shapes and concise path data, and use at most two gradients. Do not use filters, embedded raster images, scripts, animation, metadata, comments, CSS blocks, or unnecessary groups. Write compact markup with minimal whitespace.`;
 
 type ReasoningEffort =
   | "none"
@@ -548,6 +550,7 @@ async function callOpenRouter(
   prompt: string,
   model: string,
   reasoningEffort: ReasoningEffort,
+  maxTokens?: number,
 ): Promise<{ content: string; usage: ModelUsage }> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
@@ -565,6 +568,7 @@ async function callOpenRouter(
       body: JSON.stringify({
         model,
         reasoning: { effort: reasoningEffort },
+        ...(maxTokens === undefined ? {} : { max_tokens: maxTokens }),
         messages: [
           {
             role: "user",
@@ -658,12 +662,13 @@ export const generateSVG = internalAction({
   handler: async (ctx, args) => {
     const usages: ModelUsage[] = [];
     try {
-      const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. ${SVG_TEXT_POLICY} Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
+      const prompt = `Generate an SVG illustration of "${args.elementName}" in a slightly cartoony style on a transparent background. The SVG should fit nicely inside a square frame. ${SVG_TEXT_POLICY} ${SVG_COMPLEXITY_POLICY} Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return one complete SVG only, without markdown or explanations.`;
 
       const { content, usage } = await callOpenRouter(
         prompt,
         MODEL_SVG,
-        "low"
+        "low",
+        SVG_MAX_COMPLETION_TOKENS,
       );
       usages.push(usage);
       return extractSVG(content);
@@ -688,12 +693,13 @@ ${args.oldSVG}
 
 User feedback: ${args.feedback}
 
-Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. ${SVG_TEXT_POLICY} Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return only the SVG code, without any markdown formatting or explanations.`;
+Please generate an improved version of this SVG based on the feedback. Keep it in a slightly cartoony style on a transparent background, and ensure it fits nicely inside a square frame. ${SVG_TEXT_POLICY} ${SVG_COMPLEXITY_POLICY} Do not set explicit width or height attributes on the SVG element - use only viewBox for sizing. Return one complete SVG only, without markdown or explanations.`;
 
       const { content, usage } = await callOpenRouter(
         prompt,
         MODEL_SVG,
-        "low"
+        "low",
+        SVG_MAX_COMPLETION_TOKENS,
       );
       usages.push(usage);
       return extractSVG(content);
