@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { ElementSvg } from '../components/ElementSvg'
 
 type NewElementDisplayProps = {
@@ -24,9 +24,17 @@ const DISCOVERY_SPARKLES = [
   { x: 22, y: 22, size: 15, color: '#f472b6', delay: 0.95 },
 ]
 
+const FLASK_FILL_DURATION_MS = 15_000
+const FLASK_FINISH_DURATION_MS = 450
+const FLASK_EMPTY_OFFSET_PX = 105
+
 export function NewElementDisplay({ element, recipeDiscovered, elementDiscovered, onDismiss }: NewElementDisplayProps) {
   const [isVisible, setIsVisible] = useState(false)
   const isGenerating = elementDiscovered && element.generationStatus === 'pending'
+  const [showGenerating, setShowGenerating] = useState(isGenerating)
+  const fillRef = useRef<SVGGElement>(null)
+  const fillAnimationRef = useRef<Animation | null>(null)
+  const finishTimeoutRef = useRef<number | null>(null)
   const generationFailed = elementDiscovered && element.generationStatus === 'failed'
   const title = recipeDiscovered && !elementDiscovered ? 'New Recipe!' : 'New Element!'
 
@@ -36,15 +44,70 @@ export function NewElementDisplay({ element, recipeDiscovered, elementDiscovered
     })
   }, [])
 
+  useEffect(() => {
+    if (!showGenerating || !fillRef.current) return
+
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      fillRef.current.style.transform = 'translateY(0)'
+      return
+    }
+
+    const animation = fillRef.current.animate(
+      [
+        { transform: `translateY(${FLASK_EMPTY_OFFSET_PX}px)` },
+        { transform: 'translateY(0)' },
+      ],
+      {
+        duration: FLASK_FILL_DURATION_MS,
+        easing: 'linear',
+        fill: 'forwards',
+      },
+    )
+    fillAnimationRef.current = animation
+
+    return () => {
+      animation.cancel()
+      fillAnimationRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isGenerating || !showGenerating) return
+
+    const animation = fillAnimationRef.current
+    const currentTime = typeof animation?.currentTime === 'number'
+      ? animation.currentTime
+      : FLASK_FILL_DURATION_MS
+    const remaining = Math.max(FLASK_FILL_DURATION_MS - currentTime, 0)
+    const finishDuration = Math.min(remaining, FLASK_FINISH_DURATION_MS)
+
+    if (animation && finishDuration > 0) {
+      animation.updatePlaybackRate(remaining / finishDuration)
+      animation.play()
+    }
+
+    finishTimeoutRef.current = window.setTimeout(
+      () => setShowGenerating(false),
+      finishDuration,
+    )
+
+    return () => {
+      if (finishTimeoutRef.current !== null) {
+        clearTimeout(finishTimeoutRef.current)
+        finishTimeoutRef.current = null
+      }
+    }
+  }, [isGenerating, showGenerating])
+
   const handleClick = () => {
-    if (isGenerating) return
+    if (showGenerating) return
     setIsVisible(false)
     setTimeout(onDismiss, 300)
   }
 
   return (
     <div
-      class={`fixed inset-0 bg-red-900 flex flex-col items-center justify-center z-50 transition-opacity duration-300 ${isGenerating ? 'cursor-wait' : 'cursor-pointer'} ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+      class={`fixed inset-0 bg-red-900 flex flex-col items-center justify-center z-50 transition-opacity duration-300 ${showGenerating ? 'cursor-wait' : 'cursor-pointer'} ${isVisible ? 'opacity-100' : 'opacity-0'}`}
       onClick={handleClick}
       aria-live="polite"
     >
@@ -135,12 +198,17 @@ export function NewElementDisplay({ element, recipeDiscovered, elementDiscovered
         style={{ transformOrigin: 'center center' }}
       />
 
-      {isGenerating ? (
+      {showGenerating ? (
         <div key="generating" class="discovery-phase relative z-10 flex flex-col items-center text-center px-6">
           <h1 class="text-4xl font-bold text-white">You created a new element!</h1>
           <p class="text-lg text-red-100 mt-3">We're taking a closer look to see what it is.</p>
           <div class="relative w-72 h-64 mt-6" aria-label="Mixing ingredients in a chemistry flask">
             <svg class="w-full h-full overflow-visible" viewBox="0 0 288 256" role="img">
+              <defs>
+                <clipPath id="discovery-flask-interior">
+                  <path d="M135 87h18v42l36 66c6 11-1 22-12 22h-66c-11 0-18-11-12-22l36-66z" />
+                </clipPath>
+              </defs>
               <g transform="translate(0 -28)">
                 <g class="ingredient-left">
                   <path d="M35 42h48l-6 42c-1 8-8 14-16 14h-4c-8 0-15-6-16-14z" fill="#fff" fill-opacity=".14" stroke="#fff" stroke-width="5" stroke-linejoin="round" />
@@ -156,12 +224,19 @@ export function NewElementDisplay({ element, recipeDiscovered, elementDiscovered
               <path class="liquid-stream" d="M94 31c10 17 24 40 41 60" fill="none" stroke="#60a5fa" stroke-width="8" stroke-linecap="round" />
               <path class="liquid-stream" d="M194 31c-10 17-24 40-41 60" fill="none" stroke="#f9a8d4" stroke-width="8" stroke-linecap="round" style={{ animationDelay: '0.2s' }} />
               <g class="chemistry-flask">
+                <g clip-path="url(#discovery-flask-interior)">
+                  <g
+                    ref={fillRef}
+                    style={{ transform: `translateY(${FLASK_EMPTY_OFFSET_PX}px)` }}
+                  >
+                    <rect x="92" y="103" width="104" height="122" fill="#fb7185" fill-opacity=".88" />
+                    <path d="M92 94c17-8 35 7 52 0s35 8 52 0v17H92z" fill="#fde047" fill-opacity=".85" />
+                    <circle class="flask-bubble" cx="128" cy="188" r="6" fill="#fef08a" />
+                    <circle class="flask-bubble" cx="153" cy="202" r="5" fill="#f9a8d4" style={{ animationDelay: '0.5s' }} />
+                    <circle class="flask-bubble" cx="165" cy="184" r="4" fill="#fdba74" style={{ animationDelay: '1s' }} />
+                  </g>
+                </g>
                 <path d="M124 82h40m-33 0v46l-38 68c-7 12 2 27 16 27h70c14 0 23-15 16-27l-38-68V82" fill="#fff" fill-opacity=".12" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M106 184h76l13 24c4 7-1 15-9 15h-84c-8 0-13-8-9-15z" fill="#fb7185" fill-opacity=".85" />
-                <path d="M116 166c15-9 39 9 56 0l10 18h-76z" fill="#fde047" fill-opacity=".8" />
-                <circle class="flask-bubble" cx="128" cy="188" r="6" fill="#fef08a" />
-                <circle class="flask-bubble" cx="153" cy="202" r="5" fill="#f9a8d4" style={{ animationDelay: '0.5s' }} />
-                <circle class="flask-bubble" cx="165" cy="184" r="4" fill="#fdba74" style={{ animationDelay: '1s' }} />
               </g>
             </svg>
             <div class="discovery-sparkles absolute inset-0 pointer-events-none">
