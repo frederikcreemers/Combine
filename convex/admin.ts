@@ -662,8 +662,15 @@ export const suggestRecipes = action({
   args: {},
   handler: async (ctx, _args) => {
     await assertAdminAction(ctx);
-    const allRecipes = await ctx.runQuery(internal.recipes.listAllRecipes)
-    const suggestedRecipes = await suggestRecipesAI(ctx, allRecipes);
+    const [allRecipes, existingElements] = await Promise.all([
+      ctx.runQuery(internal.recipes.listAllRecipes),
+      ctx.runQuery(internal.elements.listElementNames, {}),
+    ]);
+    const suggestedRecipes = await suggestRecipesAI(
+      ctx,
+      allRecipes,
+      existingElements,
+    );
     return suggestedRecipes;
   },
 });

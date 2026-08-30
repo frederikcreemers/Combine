@@ -13,6 +13,16 @@ export function capitalizeElementName(name: string): string {
 
 const MAX_ELEMENT_NAME_LENGTH = 30;
 const MAX_GENERATION_RETRIES = 3;
+const MAX_RECIPE_SUGGESTIONS = 50;
+
+const RECIPE_POLICY = `Use this decision process for every pair:
+1. Choose the most cohesive result. Prefer a direct physical, causal, compound-word, or conventional association.
+2. When no direct result fits, use a recognizable cultural, metaphorical, wordplay, or whimsical association. A whimsical result still has a clear connection, such as Sky + Cheese = Moon.
+3. Reuse an existing element when it is at least as precise and useful as a new element. Otherwise create a broadly reusable new element.
+4. Prefer a result different from both ingredients. Return an ingredient only when the combination conventionally leaves it unchanged and no more specific result fits.
+5. Prefer specific, reusable concepts. Use broad abstractions only when they express the clearest relationship between the ingredients.
+
+Every pair has exactly one result. Each result is a non-empty element name from 1 to ${MAX_ELEMENT_NAME_LENGTH} characters.`;
 
 const MODEL_GEMINI_RECIPE = "google/gemini-3.6-flash";
 const MODEL_GEMINI_SVG = "google/gemini-3.5-flash-lite";
@@ -105,45 +115,61 @@ function buildRecipePrompt(
   ingredient2Name: string,
   recipeExamples: string,
   existingElements: string[],
-  withSurpriseCheck: boolean,
 ): string {
   const elementsList =
     existingElements.length > 0 ? existingElements.join(", ") : "None yet";
 
-  const basePrompt = `You are a recipe generator for a game where elements can be combined.
+  const basePrompt = `You generate cohesive recipes for a combination game.
 
-All existing elements in the game:
+Task: choose the result of combining "${ingredient1Name}" and "${ingredient2Name}".
+
+<existing-elements>
 ${elementsList}
+</existing-elements>
 
-Existing recipes (examples):
+<recipe-examples>
 ${recipeExamples || "None yet"}
+</recipe-examples>
 
-Given two elements to combine: "${ingredient1Name}" and "${ingredient2Name}"
+${RECIPE_POLICY}`;
 
-Determine what the result should be. Every combination must produce a result. First look for a direct physical, causal, or commonly understood result. If there is none, use a strong metaphorical, cultural, wordplay, or whimsical association. Never respond with "NO RESULT".
+  return `${basePrompt}
 
-When choosing the result:
-1. PREFER reusing an existing element from the list above when it makes sense - this keeps the game cohesive
-2. Create a new element name only if no existing element fits well - optimize for results that are interesting to build upon further
-3. Prefer a result that is different from both ingredients. Returning one of the ingredients is allowed only when combining them genuinely leaves that ingredient unchanged, and only when no other existing element describes the result better. Before returning either ingredient, check the existing elements and relevant recipe patterns for a more specific result. For example, when a profession or activity is combined with "Tool", prefer its characteristic existing tool.
-4. Also consider whimsical combinations, like sky + cheese = moon.
-5. Elements like "Idea" or "Philosophy" can be combined with concrete things to create broad concepts (e.g. burger + philosophy = food), but limit this to a small set of widely applicable concepts rather than creating overly specific abstractions.
-
-Keep the name short (under ${MAX_ELEMENT_NAME_LENGTH} characters).`;
-
-  if (withSurpriseCheck) {
-    return `${basePrompt}
-
-Reply with JSON in this exact format (no markdown, no explanation):
+Return exactly one JSON object in this shape:
 {"result": "ElementName", "surprising": true}
 
-- "result" must be a short element name, never "NO RESULT"
-- "surprising" should be true if this combination is unexpected/creative/whimsical, false if it's obvious/straightforward`;
-  } else {
-    return `${basePrompt}
+- "result" is the chosen element name.
+- "surprising" is false for a direct physical, causal, compound-word, or conventional association. It is true when the result depends on metaphor, wordplay, or an unconventional cultural association.`;
+}
 
-IMPORTANT: Reply with ONLY the result element name, nothing else. Never reply with "NO RESULT". No explanations, no markdown, just the name.`;
-  }
+function buildRecipeReviewPrompt(
+  ingredient1Name: string,
+  ingredient2Name: string,
+  candidate: string,
+  recipeExamples: string,
+  existingElements: string[],
+): string {
+  return `You review a proposed recipe for a combination game.
+
+Task: review the candidate result for combining "${ingredient1Name}" and "${ingredient2Name}".
+
+<candidate>
+${candidate}
+</candidate>
+
+<existing-elements>
+${existingElements.length > 0 ? existingElements.join(", ") : "None yet"}
+</existing-elements>
+
+<recipe-examples>
+${recipeExamples || "None yet"}
+</recipe-examples>
+
+${RECIPE_POLICY}
+
+Keep the candidate when it is cohesive and satisfies the policy. Replace it only when another result is clearly more precise, recognizable, or reusable.
+
+Reply with exactly one element name: either the original candidate or its replacement.`;
 }
 
 interface GeminiRecipeResponse {
@@ -194,7 +220,6 @@ export async function generateRecipe(
       ingredient2Name,
       recipeExamples,
       existingElements,
-      true,
     );
 
     for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
@@ -222,17 +247,17 @@ export async function generateRecipe(
         continue;
       }
 
-      // If surprising, get a second opinion from OpenAI
+      // Ask a second model to review nonliteral candidates before accepting them.
       if (parsed.surprising) {
         console.log(
           `Gemini found surprising result "${trimmed}" for ${ingredient1Name} + ${ingredient2Name}, consulting OpenAI...`,
         );
-        const openaiPrompt = buildRecipePrompt(
+        const openaiPrompt = buildRecipeReviewPrompt(
           ingredient1Name,
           ingredient2Name,
+          trimmed,
           recipeExamples,
           existingElements,
-          false,
         );
         const { content: openaiResult, usage: openaiUsage } = await callOpenRouter(
           openaiPrompt,
@@ -269,87 +294,166 @@ export async function generateElementDescription(
 ): Promise<string> {
   const usages: ModelUsage[] = [];
   try {
-    const prompt = `You are writing witty one-line descriptions for elements in a Little Alchemy-like game where players combine elements to discover new ones.
+    const prompt = `You write concise, witty descriptions for elements in a combination game.
 
-Examples of the tone to match:
-Land: Anything on Earth's surface that isn't covered by water, but is owned by Woody Guthrie and YOU!
+Task: describe the element "${elementName}" with a recognizable property and one concise joke, twist, or unexpected comparison.
+
+Tone examples:
 Life: It finds a way.
 Electricity: Charged particles, or as it's more technically known: THE POWER OF THE GODS.
-Wind: Air that blows all over the place and defies all attempts at prediction.
 Brick: A block of hardened clay that's used for construction and metaphors.
-Sky: The domain of clouds.
 Atmosphere: The layer of gases surrounding our planet that protects us from various invisible space horrors.
-Planet: A star dancer.
-Computer: An electronic device that can both aid and hinder work.
-Boat: A craft that allows one to travel over water while still being at its mercy.
 Book: The afterlife of trees.
-Chainsaw: Mechanical saw with spinning teeth of DEATH.
 Heat: A quality of either increased temperature, feeling, social standing, or police presence.
 
-Write a witty one-line description for the element "${elementName}".
+Return exactly one plain-text sentence of at most 20 words.`;
 
-Reply with ONLY the description text. No quotes, no explanations, no markdown.`;
+    for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
+      const { content: result, usage } = await callOpenRouter(
+        prompt,
+        MODEL_OPENAI,
+        "low",
+      );
+      usages.push(usage);
+      // Be tolerant of quotes at the model boundary while enforcing the content contract.
+      const description = result
+        .trim()
+        .replace(/^["']+|["']+$/g, "")
+        .trim();
+      const wordCount = description ? description.split(/\s+/).length : 0;
+      if (
+        wordCount >= 1 &&
+        wordCount <= 20 &&
+        !description.includes("\n") &&
+        !description.includes("\r")
+      ) {
+        return description;
+      }
+    }
 
-    const { content: result, usage } = await callOpenRouter(
-      prompt,
-      MODEL_OPENAI,
-      "low"
+    throw new Error(
+      `Failed to generate a valid description after ${MAX_GENERATION_RETRIES} attempts`,
     );
-    usages.push(usage);
-    // Models sometimes wrap the description in quotes despite instructions
-    return result
-      .trim()
-      .replace(/^["']+|["']+$/g, "")
-      .trim();
   } finally {
     await recordAiCost(ctx, `Generate description: ${elementName}`, usages);
   }
 }
 
+type RecipeSuggestion = {
+  ingredient1: string;
+  ingredient2: string;
+  result: string;
+};
+
+function unorderedPairKey(nameA: string, nameB: string): string {
+  const a = nameA.trim().toLowerCase();
+  const b = nameB.trim().toLowerCase();
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+function parseRecipeLine(line: string): RecipeSuggestion | null {
+  const match = line.match(/^([^+=]+?)\s*\+\s*([^+=]+?)\s*=\s*([^=]+?)$/);
+  if (!match) return null;
+  return {
+    ingredient1: match[1].trim(),
+    ingredient2: match[2].trim(),
+    result: match[3].trim(),
+  };
+}
+
 export async function suggestRecipes(
   ctx: AiLogCtx,
-  allRecipes: { ingredient1: string; ingredient2: string; result: string }[],
-): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
+  allRecipes: RecipeSuggestion[],
+  existingElements: string[],
+): Promise<RecipeSuggestion[]> {
   const usages: ModelUsage[] = [];
+  const existingPairKeys = new Set(
+    allRecipes.map((recipe) =>
+      unorderedPairKey(recipe.ingredient1, recipe.ingredient2),
+    ),
+  );
+  const possiblePairCount =
+    (existingElements.length * (existingElements.length + 1)) / 2;
+  const requestedCount = Math.min(
+    MAX_RECIPE_SUGGESTIONS,
+    Math.max(0, possiblePairCount - existingPairKeys.size),
+  );
+  if (requestedCount === 0) return [];
+
   try {
-    const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
-  
-  ${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
+    const prompt = `You propose cohesive missing recipes for a combination game.
 
-  Suggest 50 new recipes that would be fun to add to this game.
-  - The recipes should use a unique pair of ingredients (order does not matter) so they don't match an existing pair.
-  - Focus first on making missing combinations that players are likely to try out.
-  - Whenever suitable, make the result of a recipe an existing element.
-  - When introducing new elements, prioritize elements being fun to build upon, over being completely logical.
-  - Also consider combinations that might be a little bit whimsical, like sky + cheese = moon
-  - Elements like "Idea" or "Philosophy" can combine with concrete things to create broad concepts (e.g. burger + philosophy = food), but limit this to a small set of widely applicable concepts.
+Task: propose exactly ${requestedCount} recipes using pairs that players are likely to try.
 
-  Reply with only the recipes, one per line, in the format: "ingredient1 + ingredient2 = result"
-  No explanations, no markdown, just the recipes.
-`;
+<existing-elements>
+${existingElements.join(", ")}
+</existing-elements>
 
-    const { content: result, usage } = await callOpenRouter(
-      prompt,
-      MODEL_OPENAI,
-      "none"
-    );
-    usages.push(usage);
-    return result
-      .split("\n")
-      .map((recipeLine) => {
-        if (!recipeLine.includes("+") || !recipeLine.includes("=")) {
-          return null;
+<existing-recipes>
+${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
+</existing-recipes>
+
+${RECIPE_POLICY}
+
+Completion criteria:
+- Return exactly ${requestedCount} lines.
+- Format every line as: ingredient1 + ingredient2 = result
+- Copy both ingredient names verbatim from the existing-elements list.
+- Use each unordered ingredient pair once, and use only pairs absent from existing-recipes.
+- Order the recipes from most likely to be tried to least likely.
+
+Return only the recipe lines.`;
+
+    const existingElementNames = new Set(existingElements);
+    for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
+      const { content: response, usage } = await callOpenRouter(
+        prompt,
+        MODEL_OPENAI,
+        "none",
+      );
+      usages.push(usage);
+
+      const lines = response.split("\n").map((line) => line.trim()).filter(Boolean);
+      if (lines.length !== requestedCount) continue;
+
+      const seenPairKeys = new Set<string>();
+      const suggestions: RecipeSuggestion[] = [];
+      let complete = true;
+      for (const line of lines) {
+        const suggestion = parseRecipeLine(line);
+        if (
+          !suggestion ||
+          !existingElementNames.has(suggestion.ingredient1) ||
+          !existingElementNames.has(suggestion.ingredient2) ||
+          !isValidRecipeResult(suggestion.result)
+        ) {
+          complete = false;
+          break;
         }
-        const [ingredients, result] = recipeLine.split("=");
-        const [ingredient1, ingredient2] = ingredients.split("+");
 
-        return {
-          ingredient1: ingredient1.trim(),
-          ingredient2: ingredient2.trim(),
-          result: result.trim(),
-        };
-      })
-      .filter((recipe) => recipe !== null);
+        const pairKey = unorderedPairKey(
+          suggestion.ingredient1,
+          suggestion.ingredient2,
+        );
+        if (existingPairKeys.has(pairKey) || seenPairKeys.has(pairKey)) {
+          complete = false;
+          break;
+        }
+        seenPairKeys.add(pairKey);
+        suggestions.push({
+          ...suggestion,
+          result: capitalizeElementName(suggestion.result),
+        });
+      }
+
+      if (complete && suggestions.length === requestedCount) {
+        return suggestions;
+      }
+    }
+
+    throw new Error(
+      `Failed to generate ${requestedCount} complete recipe suggestions after ${MAX_GENERATION_RETRIES} attempts`,
+    );
   } finally {
     await recordAiCost(ctx, "Suggest recipes", usages);
   }
@@ -358,73 +462,78 @@ export async function suggestRecipes(
 export async function suggestRecipesForPairs(
   ctx: AiLogCtx,
   pairs: { ingredient1: string; ingredient2: string }[],
-  allRecipes: { ingredient1: string; ingredient2: string; result: string }[],
+  allRecipes: RecipeSuggestion[],
   existingElements: string[],
-): Promise<{ ingredient1: string; ingredient2: string; result: string }[]> {
+): Promise<RecipeSuggestion[]> {
+  if (pairs.length === 0) return [];
   const usages: ModelUsage[] = [];
   try {
-    const prompt = `The following is a list of "recipes" in a Little Alchemy-like game where the player combines 2 elements to create a third one.
+    const prompt = `You assign cohesive results to missing recipes in a combination game.
 
+Task: choose one result for every requested pair.
+
+<existing-recipes>
 ${allRecipes.map((recipe) => `${recipe.ingredient1} + ${recipe.ingredient2} = ${recipe.result}`).join("\n")}
+</existing-recipes>
 
-All existing elements in the game:
+<existing-elements>
 ${existingElements.join(", ")}
+</existing-elements>
 
-The following combinations have no recipe yet, but players are likely to try them early in the game. For EACH combination, determine what the result should be:
-
+<requested-pairs>
 ${pairs.map((pair) => `${pair.ingredient1} + ${pair.ingredient2}`).join("\n")}
+</requested-pairs>
 
-Guidelines:
-- PREFER reusing an existing element from the list above when it makes sense - this keeps the game cohesive.
-- When introducing new elements, prioritize elements being fun to build upon, over being completely logical.
-- Also consider combinations that might be a little bit whimsical, like sky + cheese = moon.
-- Every combination must produce a result. If there is no direct result, use a strong metaphorical, cultural, wordplay, or whimsical association.
-- Keep element names short (under ${MAX_ELEMENT_NAME_LENGTH} characters).
+${RECIPE_POLICY}
 
-Reply with one line per combination, in the same order as listed above, in the format: "ingredient1 + ingredient2 = result"
-No explanations, no markdown, just the recipes.
-`;
+Completion criteria:
+- Return exactly ${pairs.length} lines, one for each requested pair.
+- Preserve the requested-pairs order.
+- Copy both ingredient names verbatim and preserve their displayed order.
+- Format every line as: ingredient1 + ingredient2 = result
 
-    const { content: response, usage } = await callOpenRouter(
-      prompt,
-      MODEL_OPENAI,
-      "none"
-    );
-    usages.push(usage);
+Return only the recipe lines.`;
 
-    // Only keep lines that match a requested pair, so hallucinated pairs are dropped
-    // and ingredient names are restored to their canonical casing.
-    const pairKey = (nameA: string, nameB: string) => {
-      const a = nameA.trim().toLowerCase();
-      const b = nameB.trim().toLowerCase();
-      return a < b ? `${a}|${b}` : `${b}|${a}`;
-    };
-    const requestedPairs = new Map(
-      pairs.map((pair) => [pairKey(pair.ingredient1, pair.ingredient2), pair]),
-    );
+    for (let attempt = 0; attempt < MAX_GENERATION_RETRIES; attempt++) {
+      const { content: response, usage } = await callOpenRouter(
+        prompt,
+        MODEL_OPENAI,
+        "none",
+      );
+      usages.push(usage);
 
-    const suggestions: { ingredient1: string; ingredient2: string; result: string }[] = [];
-    for (const line of response.split("\n")) {
-      if (!line.includes("+") || !line.includes("=")) continue;
-      const [ingredientsPart, resultPart] = line.split("=");
-      const [ingredient1, ingredient2] = ingredientsPart.split("+");
-      if (!ingredient1 || !ingredient2 || !resultPart) continue;
+      const lines = response.split("\n").map((line) => line.trim()).filter(Boolean);
+      if (lines.length !== pairs.length) continue;
 
-      const matchedKey = pairKey(ingredient1, ingredient2);
-      const requestedPair = requestedPairs.get(matchedKey);
-      if (!requestedPair) continue;
-      requestedPairs.delete(matchedKey); // dedupe if the model repeats a pair
+      const suggestions: RecipeSuggestion[] = [];
+      let complete = true;
+      for (let index = 0; index < pairs.length; index++) {
+        const suggestion = parseRecipeLine(lines[index]);
+        const pair = pairs[index];
+        if (
+          !suggestion ||
+          suggestion.ingredient1 !== pair.ingredient1 ||
+          suggestion.ingredient2 !== pair.ingredient2 ||
+          !isValidRecipeResult(suggestion.result)
+        ) {
+          complete = false;
+          break;
+        }
+        suggestions.push({
+          ingredient1: pair.ingredient1,
+          ingredient2: pair.ingredient2,
+          result: capitalizeElementName(suggestion.result),
+        });
+      }
 
-      const result = resultPart.trim();
-      if (!isValidRecipeResult(result)) continue;
-
-      suggestions.push({
-        ingredient1: requestedPair.ingredient1,
-        ingredient2: requestedPair.ingredient2,
-        result: capitalizeElementName(result),
-      });
+      if (complete && suggestions.length === pairs.length) {
+        return suggestions;
+      }
     }
-    return suggestions;
+
+    throw new Error(
+      `Failed to generate results for all ${pairs.length} requested pairs after ${MAX_GENERATION_RETRIES} attempts`,
+    );
   } finally {
     await recordAiCost(
       ctx,
