@@ -18,6 +18,8 @@ import type * as energy from "../energy.js";
 import type * as game from "../game.js";
 import type * as http from "../http.js";
 import type * as recipes from "../recipes.js";
+import type * as tracer from "../tracer.js";
+import type * as traces from "../traces.js";
 import type * as users from "../users.js";
 
 import type {
@@ -37,6 +39,8 @@ declare const fullApi: ApiFromModules<{
   game: typeof game;
   http: typeof http;
   recipes: typeof recipes;
+  tracer: typeof tracer;
+  traces: typeof traces;
   users: typeof users;
 }>;
 
@@ -199,6 +203,192 @@ export declare const components: {
     };
     time: {
       getServerTime: FunctionReference<"mutation", "internal", {}, number>;
+    };
+  };
+  tracer: {
+    lib: {
+      addLog: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          log: {
+            message: string;
+            metadata?: Record<string, any>;
+            severity: "info" | "warn" | "error";
+            timestamp: number;
+          };
+          spanId: string;
+        },
+        string
+      >;
+      cleanupTrace: FunctionReference<
+        "mutation",
+        "internal",
+        { traceId: string },
+        null
+      >;
+      completeSpan: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          duration: number;
+          endTime: number;
+          error?: string;
+          result?: any;
+          spanId: string;
+          status: "success" | "error";
+        },
+        null
+      >;
+      createSpan: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          span: {
+            args?: any;
+            functionName?: string;
+            parentSpanId?: string;
+            source: "frontend" | "backend";
+            spanName: string;
+            startTime: number;
+            status: "pending" | "success" | "error";
+          };
+          traceId: string;
+        },
+        string
+      >;
+      createTrace: FunctionReference<
+        "mutation",
+        "internal",
+        {
+          metadata?: Record<string, any>;
+          sampleRate: number;
+          source: "frontend" | "backend";
+          status: "pending" | "success" | "error";
+          userId: "anonymous" | string;
+        },
+        string
+      >;
+      getTrace: FunctionReference<
+        "query",
+        "internal",
+        { traceId: string },
+        null | {
+          _creationTime: number;
+          _id: string;
+          functionName?: string;
+          metadata?: Record<string, any>;
+          preserve?: boolean;
+          sampleRate: number;
+          spans: Array<{
+            _creationTime: number;
+            _id: string;
+            args?: any;
+            children?: Array<any>;
+            duration?: number;
+            endTime?: number;
+            error?: string;
+            functionName?: string;
+            logs?: Array<{
+              _creationTime: number;
+              _id: string;
+              message: string;
+              metadata?: Record<string, any>;
+              severity: "info" | "warn" | "error";
+              spanId: string;
+              timestamp: number;
+            }>;
+            metadata?: Record<string, any>;
+            parentSpanId?: string;
+            result?: any;
+            source: "frontend" | "backend";
+            spanName: string;
+            startTime: number;
+            status: "pending" | "success" | "error";
+            traceId: string;
+          }>;
+          status: "pending" | "success" | "error";
+          updatedAt: number;
+          userId?: string;
+        }
+      >;
+      listTraces: FunctionReference<
+        "query",
+        "internal",
+        {
+          limit?: number;
+          status?: "pending" | "success" | "error";
+          userId?: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          functionName?: string;
+          metadata?: Record<string, any>;
+          preserve?: boolean;
+          sampleRate: number;
+          status: "pending" | "success" | "error";
+          updatedAt: number;
+          userId?: string;
+        }>
+      >;
+      searchTraces: FunctionReference<
+        "query",
+        "internal",
+        {
+          functionName: string;
+          limit?: number;
+          status?: "pending" | "success" | "error";
+          userId?: string;
+        },
+        Array<{
+          _creationTime: number;
+          _id: string;
+          functionName?: string;
+          metadata?: Record<string, any>;
+          preserve?: boolean;
+          sampleRate: number;
+          status: "pending" | "success" | "error";
+          updatedAt: number;
+          userId?: string;
+        }>
+      >;
+      updateSpanMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        { metadata: Record<string, any>; spanId: string },
+        null
+      >;
+      updateTraceMetadata: FunctionReference<
+        "mutation",
+        "internal",
+        { metadata: Record<string, any>; traceId: string },
+        null
+      >;
+      updateTracePreserve: FunctionReference<
+        "mutation",
+        "internal",
+        { preserve?: boolean; sampleRate?: number; traceId: string },
+        null
+      >;
+      updateTraceStatus: FunctionReference<
+        "mutation",
+        "internal",
+        { status: "pending" | "success" | "error"; traceId: string },
+        null
+      >;
+      verifySpan: FunctionReference<
+        "query",
+        "internal",
+        { spanId: string },
+        boolean
+      >;
+      verifyTrace: FunctionReference<
+        "query",
+        "internal",
+        { traceId: string },
+        boolean
+      >;
     };
   };
 };

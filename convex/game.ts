@@ -1,6 +1,6 @@
-import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { api, internal } from "./_generated/api";
+import { api, components, internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { generateRecipe as generateRecipeAI, generateElementDescription, capitalizeElementName } from "./ai";
 import {
@@ -9,6 +9,12 @@ import {
 } from "./energy";
 import type { Id } from "./_generated/dataModel";
 import { storeSvg, withSvgUrl } from "./elements";
+import {
+  currentTraceContext,
+  internalTracedAction,
+  type TracedResult,
+  unwrapTracedResult,
+} from "./tracer";
 
 type ElementResult = {
   _id: Id<"elements">;
@@ -254,76 +260,138 @@ export const failElementGeneration = internalMutation({
   },
 });
 
-export const generateElementDetails = internalAction({
+export const generateElementDetails = internalTracedAction({
+  name: "generateElementDetails",
   args: {
     elementId: v.id("elements"),
     elementName: v.string(),
     expectedStorageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
+    await ctx.tracer.updateMetadata({
+      elementId: args.elementId,
+      elementName: args.elementName,
+      phase: "element-details",
+    });
+
     try {
       const [svg, description] = await Promise.all([
-        ctx.runAction(internal.ai.generateSVG, {
-          elementName: args.elementName,
+        ctx.tracer.withSpan("generate SVG", async (span) => {
+          await span.updateMetadata({ elementName: args.elementName });
+          return await ctx.runAction(internal.ai.generateSVG, {
+            elementName: args.elementName,
+          });
         }),
-        generateElementDescription(ctx, args.elementName).catch((error) => {
-          console.error(
-            `Failed to generate description for ${args.elementName}:`,
-            error,
-          );
-          return undefined;
+        ctx.tracer.withSpan("generate description", async (span) => {
+          await span.updateMetadata({ elementName: args.elementName });
+          try {
+            return await generateElementDescription(ctx, args.elementName);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            await span.warn("Description generation failed", { error: message });
+            console.error(
+              `Failed to generate description for ${args.elementName}:`,
+              error,
+            );
+            return undefined;
+          }
         }),
       ]);
-      const svgStorageId = await storeSvg(ctx, svg);
-      await ctx.runMutation(internal.game.completeElementGeneration, {
-        elementId: args.elementId,
-        expectedStorageId: args.expectedStorageId,
-        svgStorageId,
-        description,
+      const svgStorageId = await ctx.tracer.withSpan("optimize and store SVG", async () => {
+        return await storeSvg(ctx, svg);
+      });
+      await ctx.tracer.withSpan("complete element generation", async () => {
+        await ctx.runMutation(internal.game.completeElementGeneration, {
+          elementId: args.elementId,
+          expectedStorageId: args.expectedStorageId,
+          svgStorageId,
+          description,
+        });
       });
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await ctx.tracer.error("Element generation failed", { error: message });
       console.error(
         `Failed to generate details for ${args.elementName}:`,
         error,
       );
-      await ctx.runMutation(internal.game.failElementGeneration, {
-        elementId: args.elementId,
-        expectedStorageId: args.expectedStorageId,
+      await ctx.tracer.withSpan("mark element generation failed", async () => {
+        await ctx.runMutation(internal.game.failElementGeneration, {
+          elementId: args.elementId,
+          expectedStorageId: args.expectedStorageId,
+        });
       });
     }
   },
 });
 
-export const discover = internalAction({
+export const discover = internalTracedAction({
+  name: "discoverRecipe",
   args: {
     element1: v.id("elements"),
     element2: v.id("elements"),
     userId: v.id("users"),
   },
   handler: async (ctx, args): Promise<{ element: ElementResult; elementDiscovered: boolean }> => {
-    const element1 = await ctx.runQuery(internal.elements.getElementPublic, {
-      elementId: args.element1,
-    });
-    const element2 = await ctx.runQuery(internal.elements.getElementPublic, {
-      elementId: args.element2,
+    const [element1, element2] = await ctx.tracer.withSpan("load ingredients", async () => {
+      return await Promise.all([
+        ctx.runQuery(internal.elements.getElementPublic, {
+          elementId: args.element1,
+        }),
+        ctx.runQuery(internal.elements.getElementPublic, {
+          elementId: args.element2,
+        }),
+      ]);
     });
 
     if (!element1 || !element2) {
       throw new Error("One or both elements not found");
     }
 
-    const recipeExamplesText = await ctx.runQuery(internal.recipes.getRecipeExamplesText, {
-      element1: args.element1,
-      element2: args.element2,
+    await ctx.tracer.updateMetadata({
+      ingredient1: element1.name,
+      ingredient2: element2.name,
+      phase: "recipe-discovery",
     });
-    const existingElements = await ctx.runQuery(internal.elements.listElementNames, {});
-    const result = await generateRecipeAI(ctx, element1.name, element2.name, recipeExamplesText, existingElements);
+    await ctx.runMutation(components.tracer.lib.updateTraceMetadata, {
+      traceId: ctx.tracer.getTraceId(),
+      metadata: {
+        ingredient1: element1.name,
+        ingredient2: element2.name,
+      },
+    });
+
+    const [recipeExamplesText, existingElements] = await ctx.tracer.withSpan(
+      "load recipe context",
+      async () => {
+        return await Promise.all([
+          ctx.runQuery(internal.recipes.getRecipeExamplesText, {
+            element1: args.element1,
+            element2: args.element2,
+          }),
+          ctx.runQuery(internal.elements.listElementNames, {}),
+        ]);
+      },
+    );
+    const result = await ctx.tracer.withSpan("generate recipe", async (span) => {
+      const generated = await generateRecipeAI(
+        ctx,
+        element1.name,
+        element2.name,
+        recipeExamplesText,
+        existingElements,
+      );
+      await span.updateMetadata({ result: generated });
+      return generated;
+    });
 
     const resultName = capitalizeElementName(result.trim());
 
     // Check if element exists
-    const existingElement = await ctx.runQuery(internal.elements.getElementByName, {
-      name: resultName,
+    const existingElement = await ctx.tracer.withSpan("find result element", async () => {
+      return await ctx.runQuery(internal.elements.getElementByName, {
+        name: resultName,
+      });
     });
 
     let resultElementId: Id<"elements">;
@@ -351,58 +419,75 @@ export const discover = internalAction({
     } else {
       // Persist a lightweight placeholder so the discovery can return while the
       // illustration and description are generated by a scheduled action.
-      const svgStorageId = await storeSvg(ctx, PENDING_ELEMENT_SVG);
-      resultElementId = await ctx.runMutation(internal.elements.insertElement, {
-        name: resultName,
-        svgStorageId,
-        discoveredBy: args.userId,
-        generationStatus: "pending",
-      }) as Id<"elements">;
-      const svgUrl = await ctx.storage.getUrl(svgStorageId);
-      if (!svgUrl) {
-        throw new Error(`Could not resolve stored SVG for element ${resultElementId}`);
-      }
+      const created = await ctx.tracer.withSpan("create pending element", async () => {
+        const svgStorageId = await storeSvg(ctx, PENDING_ELEMENT_SVG);
+        const elementId = await ctx.runMutation(internal.elements.insertElement, {
+          name: resultName,
+          svgStorageId,
+          discoveredBy: args.userId,
+          generationStatus: "pending",
+        }) as Id<"elements">;
+        const svgUrl = await ctx.storage.getUrl(svgStorageId);
+        if (!svgUrl) {
+          throw new Error(`Could not resolve stored SVG for element ${elementId}`);
+        }
+        return { elementId, svgStorageId, svgUrl };
+      });
+      resultElementId = created.elementId;
       resultElement = {
-        _id: resultElementId,
+        _id: created.elementId,
         name: resultName,
-        svgUrl,
+        svgUrl: created.svgUrl,
         generationStatus: "pending",
       };
       elementDiscovered = true;
       pendingGeneration = {
-        elementId: resultElementId,
+        elementId: created.elementId,
         elementName: resultName,
-        expectedStorageId: svgStorageId,
+        expectedStorageId: created.svgStorageId,
       };
     }
 
-    // Create the recipe
-    await ctx.runMutation(internal.recipes.insertRecipe, {
-      ingredient1: args.element1,
-      ingredient2: args.element2,
-      result: resultElementId,
-    });
+    await ctx.tracer.withSpan("save recipe and unlock result", async () => {
+      await ctx.runMutation(internal.recipes.insertRecipe, {
+        ingredient1: args.element1,
+        ingredient2: args.element2,
+        result: resultElementId,
+      });
 
-    // Unlock the element for the user if they don't already have it
-    const alreadyUnlocked = await ctx.runQuery(internal.game.isElementUnlocked, {
-      elementId: resultElementId,
-      userId: args.userId,
-    });
-
-    if (!alreadyUnlocked) {
-      await ctx.runMutation(internal.game.unlockElement, {
+      const alreadyUnlocked = await ctx.runQuery(internal.game.isElementUnlocked, {
         elementId: resultElementId,
         userId: args.userId,
       });
-    }
+
+      if (!alreadyUnlocked) {
+        await ctx.runMutation(internal.game.unlockElement, {
+          elementId: resultElementId,
+          userId: args.userId,
+        });
+      }
+    });
 
     if (pendingGeneration) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.game.generateElementDetails,
-        pendingGeneration,
-      );
+      await ctx.tracer.withSpan("schedule element details", async () => {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.game.generateElementDetails,
+          {
+            ...pendingGeneration,
+            __traceContext: currentTraceContext(ctx),
+          },
+        );
+      });
     }
+
+    await ctx.runMutation(components.tracer.lib.updateTraceMetadata, {
+      traceId: ctx.tracer.getTraceId(),
+      metadata: {
+        result: resultName,
+        elementDiscovered,
+      },
+    });
 
     return {
       element: resultElement,
@@ -427,7 +512,8 @@ export const isUserAnonymous = internalQuery({
   },
 });
 
-export const combine = action({
+export const combineTraced = internalTracedAction({
+  name: "combineElements",
   args: {
     element1: v.id("elements"),
     element2: v.id("elements"),
@@ -483,11 +569,19 @@ export const combine = action({
     }
 
     // Try to discover one
-    const discoverResult = await ctx.runAction(internal.game.discover, {
-      element1: args.element1,
-      element2: args.element2,
-      userId,
-    });
+    const discoverResult = unwrapTracedResult<{
+      element: ElementResult;
+      elementDiscovered: boolean;
+    }>(
+      await ctx.runTracedAction(internal.game.discover, {
+        element1: args.element1,
+        element2: args.element2,
+        userId,
+      }) as TracedResult<{
+        element: ElementResult;
+        elementDiscovered: boolean;
+      }>,
+    );
 
     const energyCost = discoverResult.elementDiscovered
       ? ENERGY_COST_NEW_ELEMENT
@@ -503,5 +597,20 @@ export const combine = action({
       recipeDiscovered: true,
       elementDiscovered: discoverResult.elementDiscovered,
     };
+  },
+});
+
+export const combine = action({
+  args: {
+    element1: v.id("elements"),
+    element2: v.id("elements"),
+  },
+  handler: async (ctx, args): Promise<CombineResult> => {
+    return unwrapTracedResult(
+      await ctx.runAction(internal.game.combineTraced, {
+        ...args,
+        __traceContext: undefined,
+      }) as TracedResult<CombineResult>,
+    );
   },
 });

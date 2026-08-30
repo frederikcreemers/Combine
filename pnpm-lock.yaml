@@ -23,6 +23,9 @@ importers:
       convex:
         specifier: ^1.31.5
         version: 1.31.5(react@19.2.3)
+      convex-tracer:
+        specifier: 0.1.3
+        version: 0.1.3(convex@1.31.5(react@19.2.3))(react@19.2.3)
       fuse.js:
         specifier: ^7.1.0
         version: 7.1.0
@@ -804,6 +807,12 @@ packages:
 
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
+
+  convex-tracer@0.1.3:
+    resolution: {integrity: sha512-fGiFqEWtRnE58ZMe06T7S+nVbqu7NDwpXf4sB/P4vhsCexgJmw71DVcD5HcX70lJYtr7bmZjwXRxfA7GtzQFGg==}
+    peerDependencies:
+      convex: ^1.29.3
+      react: ^18.3.1 || ^19.0.0
 
   convex@1.31.5:
     resolution: {integrity: sha512-E1IuJKFwMCHDToNGukBPs6c7RFaarR3t8chLF9n98TM5/Tgmj8lM6l7sKM1aJ3VwqGaB4wbeUAPY8osbCOXBhQ==}
@@ -1831,6 +1840,11 @@ snapshots:
   commander@11.1.0: {}
 
   convert-source-map@2.0.0: {}
+
+  convex-tracer@0.1.3(convex@1.31.5(react@19.2.3))(react@19.2.3):
+    dependencies:
+      convex: 1.31.5(react@19.2.3)
+      react: 19.2.3
 
   convex@1.31.5(react@19.2.3):
     dependencies:

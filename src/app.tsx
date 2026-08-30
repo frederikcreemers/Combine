@@ -9,6 +9,7 @@ import { EditRecipePage } from './admin/EditRecipePage'
 import { UsersPage } from './admin/UsersPage'
 import { UserPage } from './admin/UserPage'
 import { CostsPage } from './admin/CostsPage'
+import { TracesPage } from './admin/TracesPage'
 import { AdminGuard } from './admin/AdminGuard'
 import { GamePage } from './game/GamePage'
 import { LinkPage } from './game/LinkPage'
@@ -40,6 +41,7 @@ export function App() {
         <Route path="/admin/recipes" component={() => <ProtectedAdminPage><RecipesPage /></ProtectedAdminPage>} />
         <Route path="/admin/descriptions" component={() => <ProtectedAdminPage><DescriptionsPage /></ProtectedAdminPage>} />
         <Route path="/admin/costs" component={() => <ProtectedAdminPage><CostsPage /></ProtectedAdminPage>} />
+        <Route path="/admin/traces" component={() => <ProtectedAdminPage><TracesPage /></ProtectedAdminPage>} />
         <Route path="/admin/users" component={() => <ProtectedAdminPage><UsersPage /></ProtectedAdminPage>} />
         <Route path="/admin/users/:id" component={ProtectedUserPage} />
         <Route path="/admin/elements/:id" component={ProtectedElementPage} />

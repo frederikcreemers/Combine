@@ -9,4 +9,10 @@ crons.daily(
   internal.aiCostLogs.deleteOldLogs
 );
 
+crons.hourly(
+  "delete generation traces older than one day",
+  { minuteUTC: 37 },
+  internal.traces.deleteOldGenerationTraces,
+);
+
 export default crons;
